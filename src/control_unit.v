@@ -76,16 +76,15 @@ module control_unit (
                 endcase
             end
 
+            // Load/Store operations removed for area savings
             OP_LOAD: begin
-                reg_write_en = 1'b1;
-                mem_read_en = 1'b1;
-                reg_data_sel = 2'b01; // Memory data
-                alu_op = 4'b0000;     // ADD for address calculation
+                // NOP - no memory support
+                alu_op = 4'b0000;
             end
 
             OP_STORE: begin
-                mem_write_en = 1'b1;
-                alu_op = 4'b0000;     // ADD for address calculation
+                // NOP - no memory support
+                alu_op = 4'b0000;
             end
 
             OP_BRANCH: begin

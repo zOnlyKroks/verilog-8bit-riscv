@@ -43,7 +43,6 @@ module tt_um_zonlykroks_8bit_riscv (
         .prog_data(prog_data),
         .prog_clk(prog_clk),
         .debug_en(debug_en),
-        .step_mode(step_mode),
         .pc_out(pc),
         .reg_out(reg_out),
         .data_bus_out(data_bus_out),

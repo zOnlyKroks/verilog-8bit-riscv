@@ -17,7 +17,6 @@ module riscv_cpu (
 
     // Debug interface
     input  wire        debug_en,
-    input  wire        step_mode,
 
     // Outputs
     output wire [7:0]  pc_out,
@@ -73,18 +72,8 @@ module riscv_cpu (
     wire [7:0] imm_b = {instruction[31], instruction[7], instruction[30:25]}; // B-type (6 bits)
     wire [7:0] imm_j = instruction[19:12]; // J-type (simplified)
 
-    // Data memory (simple 16-byte RAM) - reduced for area
-    reg [7:0] data_memory [15:0];
-    wire [3:0] mem_addr = alu_out[3:0]; // 4 bits for 16 bytes
-
-    // Memory read/write logic
-    assign mem_data_out = data_memory[mem_addr];
-
-    always_ff @(posedge clk) begin
-        if (mem_write_en && state == STATE_EXECUTE) begin
-            data_memory[mem_addr] <= reg_data2;
-        end
-    end
+    // Data memory removed for area savings - only register operations supported
+    assign mem_data_out = 8'h00; // No memory data
 
     // Calculate effective address for instruction fetch
     wire [7:0] fetch_addr = (pc << 2) + {6'b0, fetch_counter};
@@ -129,33 +118,17 @@ module riscv_cpu (
         end
     end
 
-    // Step mode control - simple counter based approach
-    reg [3:0] step_counter;
-    wire step_advance = !step_mode || (step_counter == 4'h7); // Advance every 8 cycles in step mode
-
-    always_ff @(posedge clk or negedge rst_n) begin
-        if (!rst_n) begin
-            step_counter <= 4'h0;
-        end else if (step_mode) begin
-            step_counter <= step_counter + 1;
-        end else begin
-            step_counter <= 4'h0;
-        end
-    end
-
-    // Next state logic
+    // Next state logic - simplified, removed step mode for area
     always @(*) begin
         case (state)
-            STATE_FETCH_0: next_state = step_advance ? STATE_FETCH_1 : state;
-            STATE_FETCH_1: next_state = step_advance ? STATE_FETCH_2 : state;
-            STATE_FETCH_2: next_state = step_advance ? STATE_FETCH_3 : state;
-            STATE_FETCH_3: next_state = step_advance ? STATE_DECODE : state;
-            STATE_DECODE:  next_state = step_advance ? STATE_EXECUTE : state;
-            STATE_EXECUTE: next_state = step_advance ? STATE_WRITEBACK : state;
+            STATE_FETCH_0: next_state = STATE_FETCH_1;
+            STATE_FETCH_1: next_state = STATE_FETCH_2;
+            STATE_FETCH_2: next_state = STATE_FETCH_3;
+            STATE_FETCH_3: next_state = STATE_DECODE;
+            STATE_DECODE:  next_state = STATE_EXECUTE;
+            STATE_EXECUTE: next_state = STATE_WRITEBACK;
             STATE_WRITEBACK: begin
-                if (!step_advance)
-                    next_state = state;
-                else if (instruction == 32'h00000000)
+                if (instruction == 32'h00000000)
                     next_state = STATE_HALT;
                 else
                     next_state = STATE_FETCH_0;
@@ -179,9 +152,9 @@ module riscv_cpu (
     register_file regfile (
         .clk(clk),
         .rst_n(rst_n),
-        .read_addr1(rs1[2:0]), // Source register 1 for ALU (3-bit for 8 regs)
-        .read_addr2(rs2[2:0]), // Source register 2 for ALU (3-bit for 8 regs)
-        .write_addr(rd[2:0]),  // Destination register (3-bit for 8 regs)
+        .read_addr1(rs1[1:0]), // Source register 1 for ALU (2-bit for 4 regs)
+        .read_addr2(rs2[1:0]), // Source register 2 for ALU (2-bit for 4 regs)
+        .write_addr(rd[1:0]),  // Destination register (2-bit for 4 regs)
         .write_data(reg_data_sel == 2'b00 ? alu_out :
                    reg_data_sel == 2'b01 ? mem_data_out :
                    reg_data_sel == 2'b10 ? (pc + 8'd1) :
