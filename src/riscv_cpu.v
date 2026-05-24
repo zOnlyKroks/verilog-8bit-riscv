@@ -179,7 +179,7 @@ module riscv_cpu (
     register_file regfile (
         .clk(clk),
         .rst_n(rst_n),
-        .read_addr1(4'd1),     // Always read x1 for debug (should increment)
+        .read_addr1(rs1[3:0]), // Source register 1 for ALU
         .read_addr2(rs2[3:0]), // Source register 2 for ALU
         .write_addr(rd[3:0]),
         .write_data(reg_data_sel == 2'b00 ? alu_out :
@@ -187,8 +187,8 @@ module riscv_cpu (
                    reg_data_sel == 2'b10 ? (pc + 8'd1) :
                    reg_data_sel == 2'b11 ? imm_i : alu_out),
         .write_enable(reg_write_en && (state == STATE_WRITEBACK)),
-        .data_out1(reg_data1), // This will be x1's value for debug
-        .data_out2(reg_data2)
+        .data_out1(reg_data1), // rs1 data for ALU
+        .data_out2(reg_data2)  // rs2 data for ALU
     );
 
     // ALU input mux
@@ -202,13 +202,8 @@ module riscv_cpu (
         endcase
     end
 
-    // Get the actual source register value for ALU when needed
-    wire [7:0] rs1_data;
-
-    // Additional register read for ALU source when not using x1
-    assign rs1_data = (rs1[3:0] == 4'd1) ? reg_data1 :
-                      (rs1[3:0] == 4'd0) ? 8'd0 :      // x0 always zero
-                      regfile.registers[rs1[3:0]];     // Direct register access
+    // rs1 data is now available directly from register file
+    wire [7:0] rs1_data = reg_data1;
 
     alu alu_inst (
         .a(rs1_data),  // Use correct source register value
