@@ -129,37 +129,32 @@ module riscv_cpu (
         end
     end
 
-    // Step mode control
-    reg step_trigger;
-    reg step_trigger_prev;
-    wire step_pulse = step_trigger && !step_trigger_prev;
+    // Step mode control - simple counter based approach
+    reg [3:0] step_counter;
+    wire step_advance = !step_mode || (step_counter == 4'h7); // Advance every 8 cycles in step mode
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            step_trigger <= 1'b0;
-            step_trigger_prev <= 1'b0;
+            step_counter <= 4'h0;
+        end else if (step_mode) begin
+            step_counter <= step_counter + 1;
         end else begin
-            step_trigger_prev <= step_trigger;
-            if (!step_mode) begin
-                step_trigger <= 1'b1; // Always advance in normal mode
-            end else begin
-                step_trigger <= ~step_trigger; // Toggle in step mode for slow advancement
-            end
+            step_counter <= 4'h0;
         end
     end
 
     // Next state logic
     always @(*) begin
         case (state)
-            STATE_FETCH_0: next_state = (step_mode && !step_pulse) ? state : STATE_FETCH_1;
-            STATE_FETCH_1: next_state = (step_mode && !step_pulse) ? state : STATE_FETCH_2;
-            STATE_FETCH_2: next_state = (step_mode && !step_pulse) ? state : STATE_FETCH_3;
-            STATE_FETCH_3: next_state = (step_mode && !step_pulse) ? state : STATE_DECODE;
-            STATE_DECODE:  next_state = (step_mode && !step_pulse) ? state : STATE_EXECUTE;
-            STATE_EXECUTE: next_state = (step_mode && !step_pulse) ? state : STATE_WRITEBACK;
+            STATE_FETCH_0: next_state = step_advance ? STATE_FETCH_1 : state;
+            STATE_FETCH_1: next_state = step_advance ? STATE_FETCH_2 : state;
+            STATE_FETCH_2: next_state = step_advance ? STATE_FETCH_3 : state;
+            STATE_FETCH_3: next_state = step_advance ? STATE_DECODE : state;
+            STATE_DECODE:  next_state = step_advance ? STATE_EXECUTE : state;
+            STATE_EXECUTE: next_state = step_advance ? STATE_WRITEBACK : state;
             STATE_WRITEBACK: begin
-                if (step_mode && !step_pulse)
-                    next_state = state;  // Stay in writeback in step mode
+                if (!step_advance)
+                    next_state = state;
                 else if (instruction == 32'h00000000)
                     next_state = STATE_HALT;
                 else
