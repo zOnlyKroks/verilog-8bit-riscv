@@ -72,9 +72,9 @@ module riscv_cpu (
     wire [7:0] imm_b = instruction[19:12];  // B-type simplified to 8-bit
     wire [7:0] imm_j = instruction[19:12];  // J-type (simplified)
 
-    // Data memory (16-byte RAM) - reduced for area constraints
-    reg [7:0] data_memory [15:0];
-    wire [3:0] mem_addr = alu_out[3:0]; // 4 bits for 16 bytes
+    // Data memory (8-byte RAM) - heavily reduced for area constraints
+    reg [7:0] data_memory [7:0];
+    wire [2:0] mem_addr = alu_out[2:0]; // 3 bits for 8 bytes
 
     // Memory read/write logic
     assign mem_data_out = data_memory[mem_addr];
@@ -85,9 +85,9 @@ module riscv_cpu (
         end
     end
 
-    // Calculate effective address for instruction fetch (4 bits for 16 bytes)
+    // Calculate effective address for instruction fetch (3 bits for 8 bytes)
     wire [7:0] fetch_addr_full = (pc << 2) + {6'b0, fetch_counter};
-    wire [3:0] fetch_addr = fetch_addr_full[3:0];
+    wire [2:0] fetch_addr = fetch_addr_full[2:0];
 
     // State machine
     always_ff @(posedge clk or negedge rst_n) begin
@@ -163,9 +163,9 @@ module riscv_cpu (
     register_file regfile (
         .clk(clk),
         .rst_n(rst_n),
-        .read_addr1(rs1[1:0]), // Source register 1 for ALU (2-bit for 4 regs)
-        .read_addr2(rs2[1:0]), // Source register 2 for ALU (2-bit for 4 regs)
-        .write_addr(rd[1:0]),  // Destination register (2-bit for 4 regs)
+        .read_addr1(rs1[0]), // Source register 1 for ALU (1-bit for 2 regs)
+        .read_addr2(rs2[0]), // Source register 2 for ALU (1-bit for 2 regs)
+        .write_addr(rd[0]),  // Destination register (1-bit for 2 regs)
         .write_data(reg_data_sel == 2'b00 ? alu_out :
                    reg_data_sel == 2'b01 ? mem_data_out :
                    reg_data_sel == 2'b10 ? (pc + 8'd1) :
