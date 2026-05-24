@@ -211,7 +211,7 @@ module riscv_cpu (
 
     // Output assignments
     assign pc_out = pc;
-    assign reg_out = debug_en ? reg_data1 : reg_data2;
+    assign reg_out = reg_data1; // Always show rs1 register value
     assign data_bus_out = reg_data2;
     assign addr_out = alu_out;
     assign halt = (state == STATE_HALT);
