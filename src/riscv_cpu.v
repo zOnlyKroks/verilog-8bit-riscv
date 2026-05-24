@@ -139,7 +139,8 @@ module riscv_cpu (
             STATE_DECODE:  next_state = STATE_EXECUTE;
             STATE_EXECUTE: next_state = STATE_WRITEBACK;
             STATE_WRITEBACK: begin
-                if (opcode == 7'b0000000) // NOP or invalid instruction
+                // Only halt on explicit halt instruction (all zeros)
+                if (instruction == 32'h00000000)
                     next_state = STATE_HALT;
                 else
                     next_state = STATE_FETCH_0;
@@ -168,7 +169,7 @@ module riscv_cpu (
         .write_addr(rd[3:0]),
         .write_data(reg_data_sel == 2'b00 ? alu_out :
                    reg_data_sel == 2'b01 ? mem_data_out :
-                   reg_data_sel == 2'b10 ? (pc + 1) :
+                   reg_data_sel == 2'b10 ? (pc + 8'd1) :
                    reg_data_sel == 2'b11 ? imm_i : alu_out),
         .write_enable(reg_write_en && (state == STATE_WRITEBACK)),
         .data_out1(reg_data1),

@@ -116,9 +116,10 @@ module tb ();
 
   // Monitor for interesting events
   always @(posedge clk) begin
-    if (rst_n && output_valid && !cpu_halt) begin
-      // Uncomment for detailed trace
-      // $display("t=%0t: PC=%h, REG=%h, DATA=%h", $time, pc_out, reg_out, data_bus);
+    if (rst_n) begin
+      // Show processor state every cycle
+      $display("t=%0t: PC=%h, REG=%h, DATA=%h, HALT=%b, VALID=%b",
+               $time, pc_out, reg_out, data_bus, cpu_halt, output_valid);
     end
   end
 

@@ -57,42 +57,34 @@ module instruction_memory (
             memory[i] = 8'h00;
         end
 
-        // Simple test program: Fibonacci sequence
-        // Instruction 0: ADDI x1, x0, 1    // x1 = 1 (first fib number)
-        memory[0]  = 8'h93; // opcode + rd[0]
-        memory[1]  = 8'h00; // rd[4:1] + funct3[0]
-        memory[2]  = 8'h10; // funct3[2:1] + rs1[2:0]
-        memory[3]  = 8'h00; // rs1[4:3] + imm[4:0]
+        // Simple test program: Counter loop
+        // Instruction 0: ADDI x1, x0, 1    // x1 = 1
+        // 0x00100093 = ADDI x1, x0, 1
+        memory[0]  = 8'h93; // [7:0]   = opcode + rd[0]
+        memory[1]  = 8'h00; // [15:8]  = rd[4:1] + funct3
+        memory[2]  = 8'h10; // [23:16] = imm[7:0] + rs1[0]
+        memory[3]  = 8'h00; // [31:24] = imm[11:8] + rs1[4:1]
 
-        // Instruction 1: ADDI x2, x0, 1    // x2 = 1 (second fib number)
-        memory[4]  = 8'h13; // opcode + rd[0]
-        memory[5]  = 8'h01; // rd[4:1] + funct3[0]
-        memory[6]  = 8'h10; // funct3[2:1] + rs1[2:0]
-        memory[7]  = 8'h00; // rs1[4:3] + imm[4:0]
+        // Instruction 1: ADDI x1, x1, 1    // x1 = x1 + 1 (increment)
+        // 0x00108093 = ADDI x1, x1, 1
+        memory[4]  = 8'h93; // [7:0]   = opcode + rd[0]
+        memory[5]  = 8'h80; // [15:8]  = rd[4:1] + funct3
+        memory[6]  = 8'h10; // [23:16] = imm[7:0] + rs1[0]
+        memory[7]  = 8'h00; // [31:24] = imm[11:8] + rs1[4:1]
 
-        // Instruction 2: ADD x3, x1, x2    // x3 = x1 + x2 (next fib)
-        memory[8]  = 8'hB3; // opcode + rd[0]
-        memory[9]  = 8'h81; // rd[4:1] + funct3[0]
-        memory[10] = 8'h20; // funct3[2:1] + rs1[2:0]
-        memory[11] = 8'h00; // funct7[0] + rs2[0] + rs1[4:3]
+        // Instruction 2: ADDI x2, x1, 0    // x2 = x1 (copy for output)
+        // 0x00008113 = ADDI x2, x1, 0
+        memory[8]  = 8'h13; // [7:0]   = opcode + rd[0]
+        memory[9]  = 8'h81; // [15:8]  = rd[4:1] + funct3
+        memory[10] = 8'h00; // [23:16] = imm[7:0] + rs1[0]
+        memory[11] = 8'h00; // [31:24] = imm[11:8] + rs1[4:1]
 
-        // Instruction 3: ADDI x1, x2, 0    // x1 = x2 (move x2 to x1)
-        memory[12] = 8'h93; // opcode + rd[0]
-        memory[13] = 8'h00; // rd[4:1] + funct3[0]
-        memory[14] = 8'h00; // funct3[2:1] + rs1[2:0]
-        memory[15] = 8'h00; // rs1[4:3] + imm[4:0]
-
-        // Instruction 4: ADDI x2, x3, 0    // x2 = x3 (move x3 to x2)
-        memory[16] = 8'h13; // opcode + rd[0]
-        memory[17] = 8'h01; // rd[4:1] + funct3[0]
-        memory[18] = 8'h80; // funct3[2:1] + rs1[2:0]
-        memory[19] = 8'h00; // rs1[4:3] + imm[4:0]
-
-        // Instruction 5: JAL x0, -12      // Jump back to instruction 2 (infinite loop)
-        memory[20] = 8'h6F; // opcode
-        memory[21] = 8'h00; // rd[4:0]
-        memory[22] = 8'h40; // imm[8:1]
-        memory[23] = 8'hFF; // imm[19:12]
+        // Instruction 3: JAL x0, -8       // Jump back to instruction 1 (infinite loop)
+        // 0xFF9FF06F = JAL x0, -8 (jump back 2 instructions)
+        memory[12] = 8'h6F; // [7:0]   = opcode
+        memory[13] = 8'hF0; // [15:8]  = rd + imm[8]
+        memory[14] = 8'h9F; // [23:16] = imm[16:9]
+        memory[15] = 8'hFF; // [31:24] = imm[24:17]
     end
 
     // Read logic
