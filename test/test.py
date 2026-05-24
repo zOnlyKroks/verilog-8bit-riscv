@@ -80,7 +80,11 @@ async def test_riscv_processor(dut):
 async def test_step_mode(dut):
     """Test single-step execution mode"""
 
-    dut._log.info("Testing step mode")
+    try:
+        dut._log.info("Testing step mode - START")
+    except Exception as e:
+        print(f"ERROR in test_step_mode start: {e}")
+        raise
 
     # Set the clock period to 100 ns (10 MHz)
     clock = Clock(dut.clk, 100, unit="ns")
@@ -95,68 +99,92 @@ async def test_step_mode(dut):
     dut.rst_n.value = 1
     await ClockCycles(dut.clk, 5)
 
-    # Test normal mode first - measure how fast PC advances
-    dut._log.info("Testing normal mode progression")
-    dut.ui_in.value = 0  # Normal mode
-    await ClockCycles(dut.clk, 5)
+    try:
+        # Test normal mode first - measure how fast PC advances
+        dut._log.info("Testing normal mode progression")
+        dut.ui_in.value = 0  # Normal mode
+        await ClockCycles(dut.clk, 5)
 
-    initial_pc = int(dut.uo_out.value) & 0x0F
-    await ClockCycles(dut.clk, 50)  # Wait longer to see progression
-    normal_final_pc = int(dut.uo_out.value) & 0x0F
+        initial_pc = int(dut.uo_out.value) & 0x0F
+        await ClockCycles(dut.clk, 50)  # Wait longer to see progression
+        normal_final_pc = int(dut.uo_out.value) & 0x0F
 
-    normal_pc_change = (normal_final_pc - initial_pc) & 0x0F  # Handle 4-bit wraparound
-    dut._log.info(f"Normal mode: PC changed from 0x{initial_pc:X} to 0x{normal_final_pc:X} (change: {normal_pc_change})")
+        normal_pc_change = (normal_final_pc - initial_pc) & 0x0F  # Handle 4-bit wraparound
+        dut._log.info(f"Normal mode: PC changed from 0x{initial_pc:X} to 0x{normal_final_pc:X} (change: {normal_pc_change})")
+    except Exception as e:
+        dut._log.error(f"ERROR in normal mode test: {e}")
+        raise
 
-    # Reset and test step mode
-    dut.rst_n.value = 0
-    await ClockCycles(dut.clk, 10)
-    dut.rst_n.value = 1
-    await ClockCycles(dut.clk, 20)
+    try:
+        # Reset and test step mode
+        dut._log.info("Resetting for step mode test")
+        dut.rst_n.value = 0
+        await ClockCycles(dut.clk, 10)
+        dut.rst_n.value = 1
+        await ClockCycles(dut.clk, 20)
 
-    # Enable step mode and measure progression
-    dut._log.info("Testing step mode progression")
-    dut.ui_in.value = 0b00000100  # step_mode = 1
-    await ClockCycles(dut.clk, 5)
+        # Enable step mode and measure progression
+        dut._log.info("Testing step mode progression")
+        dut.ui_in.value = 0b00000100  # step_mode = 1
+        await ClockCycles(dut.clk, 5)
 
-    step_initial_pc = int(dut.uo_out.value) & 0x0F
-    await ClockCycles(dut.clk, 50)  # Same duration as normal mode
-    step_final_pc = int(dut.uo_out.value) & 0x0F
+        step_initial_pc = int(dut.uo_out.value) & 0x0F
+        await ClockCycles(dut.clk, 50)  # Same duration as normal mode
+        step_final_pc = int(dut.uo_out.value) & 0x0F
 
-    step_pc_change = (step_final_pc - step_initial_pc) & 0x0F  # Handle 4-bit wraparound
-    dut._log.info(f"Step mode: PC changed from 0x{step_initial_pc:X} to 0x{step_final_pc:X} (change: {step_pc_change})")
+        step_pc_change = (step_final_pc - step_initial_pc) & 0x0F  # Handle 4-bit wraparound
+        dut._log.info(f"Step mode: PC changed from 0x{step_initial_pc:X} to 0x{step_final_pc:X} (change: {step_pc_change})")
+    except Exception as e:
+        dut._log.error(f"ERROR in step mode test: {e}")
+        raise
 
-    # Step mode should progress slower than normal mode, or stay the same
-    dut._log.info(f"PC progression comparison: Normal={normal_pc_change}, Step={step_pc_change}")
+    try:
+        # Step mode should progress slower than normal mode, or stay the same
+        dut._log.info(f"PC progression comparison: Normal={normal_pc_change}, Step={step_pc_change}")
 
-    # For now, just verify both modes ran (don't assert strict step mode behavior)
-    dut._log.info(f"Normal mode PC progression: {normal_pc_change}")
-    dut._log.info(f"Step mode PC progression: {step_pc_change}")
+        # For now, just verify both modes ran (don't assert strict step mode behavior)
+        dut._log.info(f"Normal mode PC progression: {normal_pc_change}")
+        dut._log.info(f"Step mode PC progression: {step_pc_change}")
 
-    # Just verify we could measure both modes
-    assert isinstance(normal_pc_change, int), "Normal mode PC change should be measurable"
-    assert isinstance(step_pc_change, int), "Step mode PC change should be measurable"
+        # Just verify we could measure both modes
+        assert isinstance(normal_pc_change, int), "Normal mode PC change should be measurable"
+        assert isinstance(step_pc_change, int), "Step mode PC change should be measurable"
 
-    dut._log.info("Step mode test completed - step mode behavior verified")
+        dut._log.info("Step mode test completed - step mode behavior verified")
+    except Exception as e:
+        dut._log.error(f"ERROR in step mode assertions: {e}")
+        raise
 
 
 @cocotb.test()
 async def test_io_connectivity(dut):
     """Test basic I/O connectivity"""
 
-    dut._log.info("Testing I/O connectivity")
+    try:
+        dut._log.info("Testing I/O connectivity - START")
+    except Exception as e:
+        print(f"ERROR in test_io_connectivity start: {e}")
+        raise
 
-    # Set the clock period to 100 ns (10 MHz)
-    clock = Clock(dut.clk, 100, unit="ns")
-    cocotb.start_soon(clock.start())
+    try:
+        dut._log.info("Setting up clock")
+        # Set the clock period to 100 ns (10 MHz)
+        clock = Clock(dut.clk, 100, unit="ns")
+        cocotb.start_soon(clock.start())
 
-    # Reset
-    dut.ena.value = 1
-    dut.ui_in.value = 0
-    dut.uio_in.value = 0
-    dut.rst_n.value = 0
-    await ClockCycles(dut.clk, 10)
-    dut.rst_n.value = 1
-    await ClockCycles(dut.clk, 20)  # Give more time for signals to settle
+        dut._log.info("Starting reset sequence")
+        # Reset
+        dut.ena.value = 1
+        dut.ui_in.value = 0
+        dut.uio_in.value = 0
+        dut.rst_n.value = 0
+        await ClockCycles(dut.clk, 10)
+        dut.rst_n.value = 1
+        await ClockCycles(dut.clk, 20)  # Give more time for signals to settle
+        dut._log.info("Reset sequence completed")
+    except Exception as e:
+        dut._log.error(f"ERROR in I/O test setup: {e}")
+        raise
 
     # Debug: Print actual values BEFORE trying assertions
     try:
@@ -197,9 +225,13 @@ async def test_io_connectivity(dut):
     else:
         dut._log.info(f"PC value in valid range: {pc_val}")
 
-    # Final assertions - only fail if critical issues found
-    assert isinstance(uo_val, int), f"uo_out should be readable as integer, got {type(uo_val)}"
-    assert isinstance(uio_val, int), f"uio_out should be readable as integer, got {type(uio_val)}"
-    assert isinstance(uio_oe_val, int), f"uio_oe should be readable as integer, got {type(uio_oe_val)}"
+    try:
+        # Final assertions - only fail if critical issues found
+        assert isinstance(uo_val, int), f"uo_out should be readable as integer, got {type(uo_val)}"
+        assert isinstance(uio_val, int), f"uio_out should be readable as integer, got {type(uio_val)}"
+        assert isinstance(uio_oe_val, int), f"uio_oe should be readable as integer, got {type(uio_oe_val)}"
 
-    dut._log.info("I/O connectivity test passed")
+        dut._log.info("I/O connectivity test passed")
+    except Exception as e:
+        dut._log.error(f"ERROR in I/O connectivity assertions: {e}")
+        raise
