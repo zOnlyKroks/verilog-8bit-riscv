@@ -23,8 +23,7 @@ module alu (
     localparam ALU_SLT  = 5'b00101;  // Set less than
     localparam ALU_SLTU = 5'b00110;  // Set less than unsigned
     localparam ALU_SLL  = 5'b00111;  // Shift left logical
-    localparam ALU_SRL  = 5'b01000;  // Shift right logical
-    localparam ALU_SRA  = 5'b01001;  // Shift right arithmetic
+    // SRL and SRA removed for area optimization
     localparam ALU_BEQ  = 5'b10000;  // Branch equal
     localparam ALU_BNE  = 5'b10001;  // Branch not equal
     localparam ALU_BLT  = 5'b10010;  // Branch less than
@@ -49,8 +48,7 @@ module alu (
             ALU_SLT:  result = (a_signed < b_signed) ? 8'h01 : 8'h00;
             ALU_SLTU: result = (a < b) ? 8'h01 : 8'h00;
             ALU_SLL:  result = a << (b & 8'h07); // Only use lower 3 bits for shift amount
-            ALU_SRL:  result = a >> (b & 8'h07); // Logical right shift
-            ALU_SRA:  result = a_signed >>> (b & 8'h07); // Arithmetic right shift
+            // SRL and SRA removed for area optimization
 
             // Branch operations (result indicates if branch should be taken)
             ALU_BEQ:  result = (a == b) ? 8'h01 : 8'h00;

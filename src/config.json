@@ -15,6 +15,12 @@
   "//": "Users have reported that values up to 80 worked well for them.",
   "PL_TARGET_DENSITY_PCT": 81,
 
+  "//": "Additional placement and routing optimization settings",
+  "PL_MAX_DISPLACEMENT_X": 1000,
+  "PL_MAX_DISPLACEMENT_Y": 1000,
+  "DPL_MAX_DISPLACEMENT": 1000,
+  "GRT_OVERFLOW_ITER": 150,
+
   "//": "CLOCK_PERIOD - Increase this in case you are getting setup time violations.",
   "//": "The value is in nanoseconds, so 20ns == 50MHz.",
   "CLOCK_PERIOD": 20,
@@ -54,6 +60,8 @@
   "FP_SIZING": "absolute",
 
   "GRT_ALLOW_CONGESTION": 1,
+  "GRT_ADJUSTMENT": 0.3,
+  "DPL_CELL_PADDING": 2,
 
   "FP_IO_HLENGTH": 2,
   "FP_IO_VLENGTH": 2,
