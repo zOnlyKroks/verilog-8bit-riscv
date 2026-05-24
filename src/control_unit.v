@@ -75,7 +75,7 @@ module control_unit (
                     3'b001: alu_op = 5'b00111; // SLL
                     3'b010: alu_op = 5'b00101; // SLT
                     3'b011: alu_op = 5'b00110; // SLTU
-                    3'b100: alu_op = 5'b00100; // XOR (division removed for area)
+                    3'b100: alu_op = 5'b00100; // XOR
                     3'b101: begin
                         if (funct7[5]) alu_op = 5'b01001; // SRA
                         else           alu_op = 5'b01000; // SRL

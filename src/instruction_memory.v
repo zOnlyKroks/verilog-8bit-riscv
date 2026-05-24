@@ -17,7 +17,7 @@ module instruction_memory (
     output reg  [7:0]  data_out     // 8-bit instruction data output
 );
 
-    // Memory array: 32 bytes (8 instructions x 4 bytes each) - area constrained
+    // Memory array: 32 bytes (8 instructions x 4 bytes each)
     reg [7:0] memory [31:0];
 
     // Programming interface state
@@ -100,12 +100,9 @@ module instruction_memory (
         memory[22] = 8'h11; // [23:16] = imm[7:0] + rs1[0]
         memory[23] = 8'h00; // [31:24] = imm[11:8] + rs1[4:1]
 
-        // Instruction 6-10: More ADDI instructions to see register changes
-        // Just repeat incrementing different registers
+        // Instruction 6-7: More ADDI instructions to see register changes
         memory[24] = 8'h13; memory[25] = 8'h03; memory[26] = 8'h11; memory[27] = 8'h00; // ADDI x6, x2, 1
         memory[28] = 8'h93; memory[29] = 8'h83; memory[30] = 8'h12; memory[31] = 8'h00; // ADDI x7, x5, 2
-        memory[32] = 8'h13; memory[33] = 8'h04; memory[34] = 8'h13; memory[35] = 8'h00; // ADDI x8, x6, 3
-        memory[36] = 8'h93; memory[37] = 8'h84; memory[38] = 8'h14; memory[39] = 8'h00; // ADDI x9, x8, 4
     end
 
     // Read logic
