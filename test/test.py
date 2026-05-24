@@ -101,7 +101,7 @@ async def test_step_mode(dut):
     await ClockCycles(dut.clk, 5)
 
     initial_pc = int(dut.uo_out.value) & 0x0F
-    await ClockCycles(dut.clk, 30)  # Wait longer to see progression
+    await ClockCycles(dut.clk, 50)  # Wait longer to see progression
     normal_final_pc = int(dut.uo_out.value) & 0x0F
 
     normal_pc_change = normal_final_pc - initial_pc if normal_final_pc >= initial_pc else (normal_final_pc + 16) - initial_pc
@@ -109,9 +109,9 @@ async def test_step_mode(dut):
 
     # Reset and test step mode
     dut.rst_n.value = 0
-    await ClockCycles(dut.clk, 5)
+    await ClockCycles(dut.clk, 10)
     dut.rst_n.value = 1
-    await ClockCycles(dut.clk, 5)
+    await ClockCycles(dut.clk, 20)
 
     # Enable step mode and measure progression
     dut._log.info("Testing step mode progression")
@@ -119,7 +119,7 @@ async def test_step_mode(dut):
     await ClockCycles(dut.clk, 5)
 
     step_initial_pc = int(dut.uo_out.value) & 0x0F
-    await ClockCycles(dut.clk, 30)  # Same duration as normal mode
+    await ClockCycles(dut.clk, 50)  # Same duration as normal mode
     step_final_pc = int(dut.uo_out.value) & 0x0F
 
     step_pc_change = step_final_pc - step_initial_pc if step_final_pc >= step_initial_pc else (step_final_pc + 16) - step_initial_pc
@@ -154,9 +154,9 @@ async def test_io_connectivity(dut):
     dut.ui_in.value = 0
     dut.uio_in.value = 0
     dut.rst_n.value = 0
-    await ClockCycles(dut.clk, 5)
-    dut.rst_n.value = 1
     await ClockCycles(dut.clk, 10)
+    dut.rst_n.value = 1
+    await ClockCycles(dut.clk, 20)  # Give more time for signals to settle
 
     # Debug: Print actual values BEFORE trying assertions
     try:

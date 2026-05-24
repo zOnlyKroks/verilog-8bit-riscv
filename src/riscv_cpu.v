@@ -129,17 +129,36 @@ module riscv_cpu (
         end
     end
 
+    // Step mode control
+    reg step_trigger;
+    reg step_trigger_prev;
+    wire step_pulse = step_trigger && !step_trigger_prev;
+
+    always_ff @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            step_trigger <= 1'b0;
+            step_trigger_prev <= 1'b0;
+        end else begin
+            step_trigger_prev <= step_trigger;
+            if (!step_mode) begin
+                step_trigger <= 1'b1; // Always advance in normal mode
+            end else begin
+                step_trigger <= ~step_trigger; // Toggle in step mode for slow advancement
+            end
+        end
+    end
+
     // Next state logic
     always @(*) begin
         case (state)
-            STATE_FETCH_0: next_state = step_mode ? state : STATE_FETCH_1;
-            STATE_FETCH_1: next_state = step_mode ? state : STATE_FETCH_2;
-            STATE_FETCH_2: next_state = step_mode ? state : STATE_FETCH_3;
-            STATE_FETCH_3: next_state = step_mode ? state : STATE_DECODE;
-            STATE_DECODE:  next_state = step_mode ? state : STATE_EXECUTE;
-            STATE_EXECUTE: next_state = step_mode ? state : STATE_WRITEBACK;
+            STATE_FETCH_0: next_state = (step_mode && !step_pulse) ? state : STATE_FETCH_1;
+            STATE_FETCH_1: next_state = (step_mode && !step_pulse) ? state : STATE_FETCH_2;
+            STATE_FETCH_2: next_state = (step_mode && !step_pulse) ? state : STATE_FETCH_3;
+            STATE_FETCH_3: next_state = (step_mode && !step_pulse) ? state : STATE_DECODE;
+            STATE_DECODE:  next_state = (step_mode && !step_pulse) ? state : STATE_EXECUTE;
+            STATE_EXECUTE: next_state = (step_mode && !step_pulse) ? state : STATE_WRITEBACK;
             STATE_WRITEBACK: begin
-                if (step_mode)
+                if (step_mode && !step_pulse)
                     next_state = state;  // Stay in writeback in step mode
                 else if (instruction == 32'h00000000)
                     next_state = STATE_HALT;
