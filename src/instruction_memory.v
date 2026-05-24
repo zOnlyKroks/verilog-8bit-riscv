@@ -10,7 +10,7 @@
 module instruction_memory (
     input  wire        clk,
     input  wire        rst_n,
-    input  wire [7:0]  addr,        // Instruction address
+    input  wire [4:0]  addr,        // Instruction address (5 bits for 32 bytes)
     input  wire        prog_mode,   // Programming mode
     input  wire [3:0]  prog_data,   // Programming data (4-bit nibbles)
     input  wire        prog_clk,    // Programming clock
