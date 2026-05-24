@@ -133,14 +133,15 @@ module riscv_cpu (
     always @(*) begin
         case (state)
             STATE_FETCH_0: next_state = step_mode ? state : STATE_FETCH_1;
-            STATE_FETCH_1: next_state = STATE_FETCH_2;
-            STATE_FETCH_2: next_state = STATE_FETCH_3;
-            STATE_FETCH_3: next_state = STATE_DECODE;
-            STATE_DECODE:  next_state = STATE_EXECUTE;
-            STATE_EXECUTE: next_state = STATE_WRITEBACK;
+            STATE_FETCH_1: next_state = step_mode ? state : STATE_FETCH_2;
+            STATE_FETCH_2: next_state = step_mode ? state : STATE_FETCH_3;
+            STATE_FETCH_3: next_state = step_mode ? state : STATE_DECODE;
+            STATE_DECODE:  next_state = step_mode ? state : STATE_EXECUTE;
+            STATE_EXECUTE: next_state = step_mode ? state : STATE_WRITEBACK;
             STATE_WRITEBACK: begin
-                // Only halt on explicit halt instruction (all zeros)
-                if (instruction == 32'h00000000)
+                if (step_mode)
+                    next_state = state;  // Stay in writeback in step mode
+                else if (instruction == 32'h00000000)
                     next_state = STATE_HALT;
                 else
                     next_state = STATE_FETCH_0;
