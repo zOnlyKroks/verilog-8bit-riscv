@@ -73,9 +73,9 @@ module riscv_cpu (
     wire [7:0] imm_b = {instruction[31], instruction[7], instruction[30:25]}; // B-type (6 bits)
     wire [7:0] imm_j = instruction[19:12]; // J-type (simplified)
 
-    // Data memory (simple 64-byte RAM)
-    reg [7:0] data_memory [63:0];
-    wire [5:0] mem_addr = alu_out[5:0]; // 6 bits for 64 bytes
+    // Data memory (simple 16-byte RAM) - reduced for area
+    reg [7:0] data_memory [15:0];
+    wire [3:0] mem_addr = alu_out[3:0]; // 4 bits for 16 bytes
 
     // Memory read/write logic
     assign mem_data_out = data_memory[mem_addr];
@@ -179,9 +179,9 @@ module riscv_cpu (
     register_file regfile (
         .clk(clk),
         .rst_n(rst_n),
-        .read_addr1(rs1[3:0]), // Source register 1 for ALU
-        .read_addr2(rs2[3:0]), // Source register 2 for ALU
-        .write_addr(rd[3:0]),
+        .read_addr1(rs1[2:0]), // Source register 1 for ALU (3-bit for 8 regs)
+        .read_addr2(rs2[2:0]), // Source register 2 for ALU (3-bit for 8 regs)
+        .write_addr(rd[2:0]),  // Destination register (3-bit for 8 regs)
         .write_data(reg_data_sel == 2'b00 ? alu_out :
                    reg_data_sel == 2'b01 ? mem_data_out :
                    reg_data_sel == 2'b10 ? (pc + 8'd1) :

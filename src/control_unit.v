@@ -51,15 +51,10 @@ module control_unit (
                 case (funct3)
                     3'b000: alu_op = 4'b0000; // ADDI
                     3'b010: alu_op = 4'b0101; // SLTI
-                    3'b011: alu_op = 4'b0110; // SLTIU
                     3'b100: alu_op = 4'b0100; // XORI
                     3'b110: alu_op = 4'b0011; // ORI
                     3'b111: alu_op = 4'b0010; // ANDI
-                    3'b001: alu_op = 4'b0111; // SLLI
-                    3'b101: begin
-                        if (funct7[5]) alu_op = 4'b1001; // SRAI
-                        else           alu_op = 4'b1000; // SRLI
-                    end
+                    // Removed shift operations for area savings
                     default: alu_op = 4'b0000;
                 endcase
             end
@@ -72,16 +67,11 @@ module control_unit (
                         if (funct7[5]) alu_op = 4'b0001; // SUB
                         else           alu_op = 4'b0000; // ADD
                     end
-                    3'b001: alu_op = 4'b0111; // SLL
                     3'b010: alu_op = 4'b0101; // SLT
-                    3'b011: alu_op = 4'b0110; // SLTU
                     3'b100: alu_op = 4'b0100; // XOR
-                    3'b101: begin
-                        if (funct7[5]) alu_op = 4'b1001; // SRA
-                        else           alu_op = 4'b1000; // SRL
-                    end
                     3'b110: alu_op = 4'b0011; // OR
                     3'b111: alu_op = 4'b0010; // AND
+                    // Removed shift and unsigned operations for area savings
                     default: alu_op = 4'b0000;
                 endcase
             end
@@ -105,8 +95,7 @@ module control_unit (
                     3'b001: alu_op = 4'b1011; // BNE
                     3'b100: alu_op = 4'b1100; // BLT
                     3'b101: alu_op = 4'b1101; // BGE
-                    3'b110: alu_op = 4'b1110; // BLTU
-                    3'b111: alu_op = 4'b1111; // BGEU
+                    // Removed unsigned branches for area savings
                     default: alu_op = 4'b1010;
                 endcase
             end
