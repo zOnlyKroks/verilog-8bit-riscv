@@ -30,21 +30,66 @@ module shared_multiplier (
     input  wire [15:0] shift_result // Shifter result
 );
 
-    // Simple combinational multiplier for now
-    wire [31:0] product = a * b;
+    // Sequential multiplier state machine
+    localparam IDLE = 2'b00;
+    localparam MULTIPLY = 2'b01;
+    localparam DONE_STATE = 2'b10;
+
+    reg [1:0] state, next_state;
+    reg [31:0] accumulator;
+    reg [15:0] multiplicand, multiplier;
+    reg [4:0] counter;
 
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
+            state <= IDLE;
             done <= 1'b0;
             result <= 16'h0000;
+            accumulator <= 32'h00000000;
+            multiplicand <= 16'h0000;
+            multiplier <= 16'h0000;
+            counter <= 5'h00;
         end else begin
-            if (start) begin
-                done <= 1'b1;
-                result <= high_result ? product[31:16] : product[15:0];
-            end else begin
-                done <= 1'b0;
-            end
+            state <= next_state;
+
+            case (state)
+                IDLE: begin
+                    done <= 1'b0;
+                    if (start) begin
+                        accumulator <= 32'h00000000;
+                        multiplicand <= a;
+                        multiplier <= b;
+                        counter <= 5'd16;
+                    end
+                end
+
+                MULTIPLY: begin
+                    if (counter == 0) begin
+                        result <= high_result ? accumulator[31:16] : accumulator[15:0];
+                    end else begin
+                        if (multiplier[0]) begin
+                            accumulator <= accumulator + {16'h0000, multiplicand};
+                        end
+                        multiplier <= multiplier >> 1;
+                        multiplicand <= multiplicand << 1;
+                        counter <= counter - 1;
+                    end
+                end
+
+                DONE_STATE: begin
+                    done <= 1'b1;
+                end
+            endcase
         end
+    end
+
+    always_comb begin
+        next_state = state;
+        case (state)
+            IDLE: if (start) next_state = MULTIPLY;
+            MULTIPLY: if (counter == 0) next_state = DONE_STATE;
+            DONE_STATE: if (!start) next_state = IDLE;
+        endcase
     end
 
     // Tie off unused shared resource interfaces

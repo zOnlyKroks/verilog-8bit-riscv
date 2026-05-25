@@ -101,20 +101,25 @@ module riscv_cpu (
 
             case (state)
                 STATE_FETCH: begin
-                    // Simplified fetch - handle all I2C instruction fetch logic
-                    if (fetch_counter == 2'b00) begin
+                    // Multi-byte I2C instruction fetch
+                    if (!i2c_start) begin
+                        // Start new I2C read for current byte
                         i2c_address <= instruction_addr;
                         i2c_read_write <= 1'b1;  // Read
                         i2c_start <= 1'b1;
                     end else begin
-                        i2c_start <= 1'b0;
+                        // Wait for I2C completion
                         if (i2c_ready && !i2c_error) begin
+                            i2c_start <= 1'b0;
                             instruction_bytes[fetch_counter] <= i2c_read_data;
-                            fetch_counter <= fetch_counter + 1;
+
                             if (fetch_counter == 2'b11) begin
-                                // Assemble complete instruction
+                                // Assemble complete 32-bit instruction
                                 instruction <= {i2c_read_data, instruction_bytes[2],
                                               instruction_bytes[1], instruction_bytes[0]};
+                                fetch_counter <= 2'b00;  // Reset for next instruction
+                            end else begin
+                                fetch_counter <= fetch_counter + 1;
                             end
                         end
                     end
