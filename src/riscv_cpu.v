@@ -85,9 +85,9 @@ module riscv_cpu (
         end
     end
 
-    // Calculate effective address for instruction fetch (4 bits for 16 bytes)
+    // Calculate effective address for instruction fetch (5 bits for 32 bytes)
     wire [7:0] fetch_addr_full = (pc << 2) + {6'b0, fetch_counter};
-    wire [3:0] fetch_addr = fetch_addr_full[3:0];
+    wire [4:0] fetch_addr = fetch_addr_full[4:0];
 
     // State machine
     always_ff @(posedge clk or negedge rst_n) begin

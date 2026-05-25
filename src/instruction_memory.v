@@ -10,25 +10,25 @@
 module instruction_memory (
     input  wire        clk,
     input  wire        rst_n,
-    input  wire [3:0]  addr,        // Instruction address (4 bits for 12 bytes)
+    input  wire [4:0]  addr,        // Instruction address (5 bits for 32 bytes)
     input  wire        prog_mode,   // Programming mode
     input  wire [3:0]  prog_data,   // Programming data (4-bit nibbles)
     input  wire        prog_clk,    // Programming clock
     output reg  [7:0]  data_out     // 8-bit instruction data output
 );
 
-    // Memory array: 16 bytes (4 instructions x 4 bytes each)
-    reg [7:0] memory [15:0];
+    // Memory array: 32 bytes (8 instructions x 4 bytes each)
+    reg [7:0] memory [31:0];
 
     // Programming interface state
-    reg [3:0] prog_addr;
+    reg [4:0] prog_addr;
     reg [1:0] prog_nibble_count;
     reg [7:0] prog_byte_buffer;
 
     // Programming logic
     always_ff @(posedge prog_clk or negedge rst_n) begin
         if (!rst_n) begin
-            prog_addr <= 4'h0;
+            prog_addr <= 5'h00;
             prog_nibble_count <= 2'b00;
             prog_byte_buffer <= 8'h00;
         end else if (prog_mode) begin
@@ -53,38 +53,42 @@ module instruction_memory (
     integer i;
     initial begin
         // Initialize all memory to zero
-        for (i = 0; i < 16; i = i + 1) begin
+        for (i = 0; i < 32; i = i + 1) begin
             memory[i] = 8'h00;
         end
 
-        // Test program: 4 instructions using x0, x1, x2, x3
+        // Enhanced test program: 8 instructions using x0, x1, x2, x3
         // Instruction 0: ADDI x1, x0, 1    // x1 = 1
         // 0x00100093 = ADDI x1, x0, 1
-        memory[0]  = 8'h93; // [7:0]   = opcode + rd[0]
-        memory[1]  = 8'h00; // [15:8]  = rd[4:1] + funct3
-        memory[2]  = 8'h10; // [23:16] = imm[7:0] + rs1[0]
-        memory[3]  = 8'h00; // [31:24] = imm[11:8] + rs1[4:1]
+        memory[0]  = 8'h93; memory[1]  = 8'h00; memory[2]  = 8'h10; memory[3]  = 8'h00;
 
-        // Instruction 1: ADDI x1, x1, 1    // x1 = x1 + 1 (increment)
+        // Instruction 1: ADDI x1, x1, 1    // x1 = x1 + 1 (x1 = 2)
         // 0x00108093 = ADDI x1, x1, 1
-        memory[4]  = 8'h93; // [7:0]   = opcode + rd[0]
-        memory[5]  = 8'h80; // [15:8]  = rd[4:1] + funct3
-        memory[6]  = 8'h10; // [23:16] = imm[7:0] + rs1[0]
-        memory[7]  = 8'h00; // [31:24] = imm[11:8] + rs1[4:1]
+        memory[4]  = 8'h93; memory[5]  = 8'h80; memory[6]  = 8'h10; memory[7]  = 8'h00;
 
-        // Instruction 2: ADDI x2, x1, 0    // x2 = x1 (copy for output)
+        // Instruction 2: ADDI x2, x1, 0    // x2 = x1 (x2 = 2)
         // 0x00008113 = ADDI x2, x1, 0
-        memory[8]  = 8'h13; // [7:0]   = opcode + rd[0]
-        memory[9]  = 8'h81; // [15:8]  = rd[4:1] + funct3
-        memory[10] = 8'h00; // [23:16] = imm[7:0] + rs1[0]
-        memory[11] = 8'h00; // [31:24] = imm[11:8] + rs1[4:1]
+        memory[8]  = 8'h13; memory[9]  = 8'h81; memory[10] = 8'h00; memory[11] = 8'h00;
 
-        // Instruction 3: ADDI x3, x2, 1    // x3 = x2 + 1
+        // Instruction 3: ADDI x3, x2, 1    // x3 = x2 + 1 (x3 = 3)
         // 0x00110193 = ADDI x3, x2, 1
-        memory[12] = 8'h93; // [7:0]   = opcode + rd[0]
-        memory[13] = 8'h01; // [15:8]  = rd[4:1] + funct3 (x3 = rd[2:0] = 011)
-        memory[14] = 8'h11; // [23:16] = imm[7:0] + rs1[0] (rs1 = x2)
-        memory[15] = 8'h00; // [31:24] = imm[11:8] + rs1[4:1]
+        memory[12] = 8'h93; memory[13] = 8'h01; memory[14] = 8'h11; memory[15] = 8'h00;
+
+        // Instruction 4: ADD x1, x1, x2    // x1 = x1 + x2 (x1 = 4)
+        // 0x002080B3 = ADD x1, x1, x2
+        memory[16] = 8'hB3; memory[17] = 8'h80; memory[18] = 8'h20; memory[19] = 8'h00;
+
+        // Instruction 5: AND x2, x1, x3    // x2 = x1 & x3 (x2 = 4 & 3 = 0)
+        // 0x0030F133 = AND x2, x1, x3
+        memory[20] = 8'h33; memory[21] = 8'hF1; memory[22] = 8'h30; memory[23] = 8'h00;
+
+        // Instruction 6: OR x3, x1, x2     // x3 = x1 | x2 (x3 = 4 | 0 = 4)
+        // 0x0020E1B3 = OR x3, x1, x2
+        memory[24] = 8'hB3; memory[25] = 8'hE1; memory[26] = 8'h20; memory[27] = 8'h00;
+
+        // Instruction 7: XOR x1, x2, x3    // x1 = x2 ^ x3 (x1 = 0 ^ 4 = 4)
+        // 0x003140B3 = XOR x1, x2, x3
+        memory[28] = 8'hB3; memory[29] = 8'h40; memory[30] = 8'h31; memory[31] = 8'h00;
     end
 
     // Read logic
