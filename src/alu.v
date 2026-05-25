@@ -13,8 +13,8 @@ module alu (
     input  wire [15:0] b,        // Second operand
     input  wire [4:0]  alu_op,   // ALU operation selector (expanded to 5 bits)
     output reg  [15:0] result,   // ALU result
-    output wire        zero_flag,// Zero flag for branches
-    output wire        mul_busy  // Multiplication in progress
+    output wire        zero_flag // Zero flag for branches
+    // output wire        mul_busy  // Removed for area optimization
 );
 
     // ALU operation codes - expanded to 5 bits with full instruction set
@@ -109,7 +109,7 @@ module alu (
     );
 
     assign mul_shift_result = shift_result;
-    assign mul_busy = using_multiplier;
+    // assign mul_busy = using_multiplier; // Removed for area optimization
 
     // ALU operation logic - full functionality with division
     always @(*) begin

@@ -14,8 +14,8 @@ module riscv_cpu (
     inout  wire        sda,
     output wire        scl,
 
-    // Debug interface
-    input  wire        debug_en,
+    // Debug interface (removed for area optimization)
+    // input  wire        debug_en,
 
     // Outputs
     output wire [15:0] pc_out,
@@ -58,7 +58,7 @@ module riscv_cpu (
     wire [1:0] pc_sel;
     wire [1:0] reg_data_sel;
     wire branch_taken_alu;
-    wire jump_taken;
+    // wire jump_taken; // Removed unused signal
 
     // Optimized instruction decode (only extract needed bits)
     wire [6:0] opcode = instruction[6:0];
@@ -149,6 +149,10 @@ module riscv_cpu (
                         pc <= pc + 16'd1;
                 end
 
+                default: begin
+                    // Handle undefined states
+                end
+
             endcase
         end
     end
@@ -190,21 +194,21 @@ module riscv_cpu (
             end
 
             STATE_HALT: next_state = STATE_HALT;
+
             default: next_state = STATE_FETCH;
         endcase
     end
 
-    // I2C controller for external EEPROM (configurable)
+    // I2C controller for external EEPROM (simplified)
     i2c_controller #(
         .DEVICE_ADDR(7'b1010_000),  // 24LC512 family (0x50)
-        .ADDR_BITS(16),             // 16-bit addressing for 64KB
         .CLK_DIV(100)               // 100kHz I2C from 10MHz system clock
     ) i2c_ctrl (
         .clk(clk),
         .rst_n(rst_n),
         .start(i2c_start),
         .read_write(i2c_read_write),
-        .address({1'b0, i2c_address}),  // Extend to 17-bit
+        .address(i2c_address),      // Direct 16-bit address
         .write_data(i2c_write_data),
         .read_data(i2c_read_data),
         .ready(i2c_ready),
@@ -242,7 +246,7 @@ module riscv_cpu (
     // rs1 data is now available directly from register file
     wire [15:0] rs1_data = reg_data1;
 
-    wire mul_busy;
+    // wire mul_busy; // Removed unused signal
 
     alu alu_inst (
         .clk(clk),
@@ -251,8 +255,8 @@ module riscv_cpu (
         .b(alu_b),
         .alu_op(alu_op),
         .result(alu_out),
-        .zero_flag(branch_taken_alu),
-        .mul_busy(mul_busy)
+        .zero_flag(branch_taken_alu)
+        // .mul_busy(mul_busy) // Removed unused signal
     );
 
     control_unit ctrl (

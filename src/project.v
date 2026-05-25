@@ -43,7 +43,6 @@ module tt_um_zonlykroks_8bit_riscv (
         .rst_n(cpu_rst_n),
         .sda(sda_wire),
         .scl(scl_out),
-        .debug_en(debug_en),
         .pc_out(pc),
         .addr_out(addr_out),
         .halt(cpu_halt),

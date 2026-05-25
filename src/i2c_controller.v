@@ -9,7 +9,6 @@
 
 module i2c_controller #(
     parameter DEVICE_ADDR = 7'b1010_000,  // 0x50 for 24LCxxx family
-    parameter ADDR_BITS   = 16,           // Address width (8, 16, or 17)
     parameter CLK_DIV     = 100           // Clock divider for I2C timing
 )(
     input  wire        clk,
@@ -18,7 +17,7 @@ module i2c_controller #(
     // Control interface
     input  wire        start,          // Start I2C transaction
     input  wire        read_write,     // 0=write, 1=read
-    input  wire [16:0] address,        // EEPROM address (up to 17-bit)
+    input  wire [15:0] address,        // EEPROM address (16-bit)
     input  wire [7:0]  write_data,     // Data to write
     output reg  [7:0]  read_data,      // Data read from EEPROM
     output reg         ready,          // Transaction complete
