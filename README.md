@@ -1,19 +1,19 @@
 # 8-bit RISC-V Processor for TinyTapeout
 
-Compact RISC-V processor implementation optimized for silicon fabrication via TinyTapeout IHP shuttle.
+Compact RISC-V processor implementation with external EEPROM memory optimized for silicon fabrication via TinyTapeout IHP shuttle.
 
 **Author**: Finn Rades (zOnlyKroks)  
 **Target**: TinyTapeout 1x2 tile (334x108 μm)  
-**Utilization**: 80% @ 24KB ROM configuration
+**Utilization**: 73% with external EEPROM interface
 
 ## Technical Specifications
 
 ### Architecture
-- **Datapath**: 8-bit Harvard architecture
+- **Datapath**: 8-bit Harvard architecture with external memory
 - **Registers**: 4 general-purpose (x0-x3), x0 hardwired to zero
-- **Instruction Memory**: 24 bytes ROM (6 instructions)
-- **Data Memory**: 12 bytes RAM
-- **Execution**: Multi-cycle (7 states: FETCH_0-3, DECODE, EXECUTE, WRITEBACK, HALT)
+- **External Memory**: 64KB EEPROM via I2C (instruction + data)
+- **Memory Interface**: I2C master controller (100kHz)
+- **Execution**: Multi-cycle (10 states including I2C memory access)
 
 ### Instruction Set (RV32I Subset)
 **Arithmetic/Logic**:
@@ -51,93 +51,188 @@ Compact RISC-V processor implementation optimized for silicon fabrication via Ti
 ### Pin Configuration
 
 **Inputs** (`ui_in[7:0]`):
-- `ui_in[0]` - Reset (active low)
-- `ui_in[1]` - Programming mode enable
-- `ui_in[7:4]` - Programming data (4-bit nibbles)
+- `ui_in[0]` - Debug enable
 
 **Bidirectional** (`uio_in[7:0]`, `uio_out[7:0]`):
-- `uio_in[0]` - Programming clock
-- `uio_out[3:0]` - Instruction data debug
+- `uio_out[0]` - I2C Clock (SCL) 
+- `uio_in[1]` - I2C Data (SDA) - bidirectional
+- `uio_out[3:2]` - EEPROM address high bits (debug)
+- `uio_out[5:4]` - Program counter high bits (debug)
 - `uio_out[6]` - Halt flag
 - `uio_out[7]` - Valid instruction flag
 
 **Outputs** (`uo_out[7:0]`):
-- `uo_out[3:0]` - Program counter (4 LSBs)
-- `uo_out[7:4]` - Opcode debug (4 LSBs)
+- `uo_out[3:0]` - Program counter lower 4 bits
+- `uo_out[7:4]` - EEPROM address lower 4 bits
 
 ### Fabrication Specifications
 - **Process**: IHP 130nm
 - **Die Area**: 1x2 TinyTapeout tile (334x108 μm)
-- **Gate Count**: ~2500 gates
 - **Clock Target**: 10 MHz maximum
 - **Power**: <1mW estimated
+- **I/O Requirements**: I2C interface (SCL + SDA pins)
 
-## Programming the Device
+## External EEPROM Programming
 
-### TinyTapeout Dev Board Setup
+This processor requires an external I2C EEPROM to store both instructions and data. The I2C interface is designed for compatibility with standard EEPROM programming tools.
 
-1. **Power Connection**
-   - Connect 3.3V supply to VDD
-   - Connect GND to VSS
-   - Apply clock signal (1-10 MHz) to CLK
+### Hardware Requirements
 
-2. **Enter Programming Mode**
-   ```
-   ui_in[1] = 1    // Enable programming mode
-   ui_in[0] = 0    // Hold reset
-   ui_in[0] = 1    // Release reset
-   ```
+**Recommended EEPROM**: [SparkFun Qwiic EEPROM Breakout (512Kbit)](https://eckstein-shop.de/SparkFun-Qwiic-EEPROM-Breakout-512Kbit) or any compatible I2C EEPROM:
 
-3. **Load Instructions**
-   Each 32-bit instruction requires 8 clock cycles of 4-bit nibbles:
-   ```
-   for each instruction word:
-     for nibble in [7:0]:  // LSB first
-       uio_in[7:4] = instruction_nibbles[nibble]
-       uio_in[0] = 1  // Programming clock high
-       uio_in[0] = 0  // Programming clock low
-   ```
+**Supported EEPROMs**:
+- 24LC512 (64KB) - Primary target
+- 24LC256 (32KB) 
+- 24LC128 (16KB)
+- 24LC64 (8KB)
+- 24LC32 (4KB)
 
-4. **Start Execution**
-   ```
-   ui_in[1] = 0    // Disable programming mode
-   ```
+**Connection Requirements**:
+- **SCL**: Connect to `uio_out[0]` (I2C Clock)
+- **SDA**: Connect to `uio_in[1]` (I2C Data, bidirectional)
+- **VCC**: 3.3V power supply
+- **GND**: Ground connection
+- **A0, A1, A2**: Address pins (tie to GND for device address 0x50)
 
-### Example Program Loading
+### Memory Organization
 
-Load simple counter program:
+**Address Space**: 64KB (16-bit addressing)
+- **0x0000-0x7FFF**: Instruction Memory (32KB)
+- **0x8000-0xFFFF**: Data Memory (32KB)
+
+**Instruction Layout**:
+- Each instruction: 4 bytes (32-bit RISC-V)
+- Program counter auto-increments by 4-byte boundaries
+- Byte 0: LSB, Byte 3: MSB of instruction
+
+### Programming Methods
+
+#### Method 1: Arduino Programming (Before TinyTapeout Connection)
+
+Use Arduino with I2C_EEPROM library to pre-program the EEPROM, then connect to TinyTapeout:
+
+```cpp
+#include "I2C_eeprom.h"
+
+// Initialize EEPROM (device address 0x50, 64KB)
+I2C_eeprom ee(0x50, I2C_DEVICESIZE_24LC512);
+
+void setup() {
+  ee.begin();
+  
+  // Program example: ADDI x1, x0, 1 (0x00100093)
+  uint32_t instruction = 0x00100093;
+  
+  // Write instruction at address 0x0000 (4 bytes)
+  ee.writeBytes(0x0000, (uint8_t*)&instruction, 4);
+  delay(5); // Write cycle time
+  
+  // Verify instruction
+  uint32_t read_back;
+  ee.readBytes(0x0000, (uint8_t*)&read_back, 4);
+}
+```
+
+**Steps**: 1) Program EEPROM with Arduino, 2) Disconnect Arduino, 3) Connect EEPROM to TinyTapeout
+
+#### Method 2: Direct I2C Programming
+
+**Device Configuration**:
+- Device Address: `0x50` (7-bit: `0b1010000`)
+- Address Width: 16-bit for 24LC512
+- Clock Speed: 100kHz (compatible with standard I2C)
+
+**Write Sequence**:
+1. START condition
+2. Device address + WRITE bit (0x50 << 1 | 0)
+3. Address high byte 
+4. Address low byte
+5. Data bytes (up to page boundary)
+6. STOP condition
+7. Wait 5ms (write cycle time)
+
+**Programming Example** (bytecode sequence):
 ```assembly
 # Instruction 0: ADDI x1, x0, 1  (0x00100093)
+Address 0x0000: 0x93, 0x00, 0x10, 0x00
+
 # Instruction 1: ADDI x1, x1, 1  (0x00108093)  
+Address 0x0004: 0x93, 0x80, 0x10, 0x00
+
 # Instruction 2: ADDI x2, x1, 0  (0x00008113)
+Address 0x0008: 0x13, 0x81, 0x00, 0x00
 ```
 
-Programming sequence:
+### EEPROM Configuration for Different Chips
+
+The I2C controller supports multiple EEPROM variants through parameterization:
+
+```verilog
+// For 24LC512 (64KB) - Default
+i2c_controller #(
+    .DEVICE_ADDR(7'b1010_000),  // 0x50
+    .ADDR_BITS(16),             // 16-bit addressing
+    .CLK_DIV(100)               // 100kHz @ 10MHz system clock
+) i2c_ctrl (...);
+
+// For 24LC256 (32KB)
+// Change ADDR_BITS to 15, same device address
+
+// For smaller chips (24LC32 and below)  
+// Change ADDR_BITS to 8-12 depending on capacity
 ```
-// Instruction 0: 0x00100093
-Nibble 0: 0x3, Nibble 1: 0x0, Nibble 2: 0x0, Nibble 3: 0x9
-Nibble 4: 0x0, Nibble 5: 0x1, Nibble 6: 0x0, Nibble 7: 0x0
 
-// Instruction 1: 0x00108093  
-Nibble 0: 0x3, Nibble 1: 0x0, Nibble 2: 0x8, Nibble 3: 0x9
-Nibble 4: 0x0, Nibble 5: 0x1, Nibble 6: 0x0, Nibble 7: 0x0
+### Programming Workflow
 
-// Instruction 2: 0x00008113
-Nibble 0: 0x3, Nibble 1: 0x1, Nibble 2: 0x8, Nibble 3: 0x0
-Nibble 4: 0x0, Nibble 5: 0x0, Nibble 6: 0x0, Nibble 7: 0x0
+1. **Program EEPROM Externally**: Use Arduino or I2C programmer to load instructions/data
+2. **Connect EEPROM**: Wire programmed EEPROM to TinyTapeout I2C pins
+3. **Power Setup**: Apply 3.3V to both processor and EEPROM
+4. **Reset Processor**: Toggle reset to start execution from address 0x0000
+5. **Monitor Execution**: Watch debug outputs on `uo_out` and `uio_out`
+
+### Timing Considerations
+
+- **I2C Clock**: 100kHz (10μs period)
+- **Write Cycle**: 5ms minimum between writes
+- **Instruction Fetch**: ~200μs per 32-bit instruction (4 I2C transactions)
+- **Overall Performance**: ~5000 instructions/second
+
+### Data Memory Access
+
+Programs can access data memory in upper 32KB:
+
+```assembly
+# Store byte to data memory
+ADDI x1, x0, 0x42    # Load value 0x42
+SB x1, 0(x0)         # Store to data address 0x8000
+
+# Load byte from data memory  
+LB x2, 10(x0)        # Load from data address 0x800A
 ```
 
 ## Debug Interface
 
 ### Runtime Monitoring
-- **PC Output**: `uo_out[3:0]` shows current program counter
-- **Opcode**: `uo_out[7:4]` shows current instruction opcode
+- **PC Output**: `uo_out[3:0]` + `uio_out[5:4]` shows current program counter
+- **EEPROM Address**: `uo_out[7:4]` + `uio_out[3:2]` shows current I2C address
 - **Halt Status**: `uio_out[6]` indicates processor halt
 - **Valid Flag**: `uio_out[7]` indicates valid instruction execution
+- **I2C Clock**: `uio_out[0]` shows SCL signal activity
 
-### Memory Map
-**Instruction Memory**: 0x00-0x17 (24 bytes)  
-**Data Memory**: 0x00-0x0B (12 bytes)
+### CPU State Machine
+The processor operates through multiple states for I2C memory access:
+- **FETCH_START**: Initiate instruction fetch
+- **FETCH_WAIT**: Wait for I2C completion
+- **DECODE**: Instruction decoding
+- **MEM_START**: Start memory operation (for load/store)
+- **MEM_WAIT**: Wait for memory I2C operation
+- **EXECUTE**: Instruction execution
+- **WRITEBACK**: Register/PC update
+- **HALT**: Processor halted
+
+### Memory Map (External EEPROM)
+**Instruction Memory**: 0x0000-0x7FFF (32KB)  
+**Data Memory**: 0x8000-0xFFFF (32KB)
 
 ### Register Constraints
 Only registers x0-x3 are implemented:
@@ -149,22 +244,23 @@ Instructions referencing x4-x31 will use x0 (reads) or be ignored (writes).
 ## Limitations
 
 - **Reduced register set**: Only 4 of 32 RISC-V registers
-- **Limited memory**: 24B ROM, 12B RAM
+- **External memory dependency**: Requires I2C EEPROM for operation
+- **Slower execution**: ~200μs per instruction due to I2C overhead
 - **No interrupts**: Polling-based I/O only  
 - **No multiplication/division**: Software implementation required
 - **No floating point**: Integer operations only
-- **8-bit addressing**: 256-byte maximum address space
+- **Limited I2C speed**: 100kHz maximum for reliable operation
 
 ## File Structure
 
 ```
 src/
-├── project.v           # TinyTapeout wrapper
-├── riscv_cpu.v         # CPU core with state machine  
+├── project.v           # TinyTapeout wrapper with I2C interface
+├── riscv_cpu.v         # CPU core with I2C memory interface  
+├── i2c_controller.v    # I2C master for EEPROM communication
 ├── alu.v               # 8-bit ALU
 ├── register_file.v     # 4x8-bit register file
 ├── control_unit.v      # Instruction decoder
-├── instruction_memory.v # 24-byte ROM
 └── config.json         # OpenROAD configuration
 
 test/
@@ -189,4 +285,4 @@ tt --debug place-and-route
 tt --debug gds
 ```
 
-Target utilization: 80% @ 1x2 tile with 24-byte ROM configuration.
+**Current Status**: 73% utilization @ 1x2 tile with external EEPROM interface.

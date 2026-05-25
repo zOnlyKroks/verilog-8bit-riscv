@@ -10,10 +10,9 @@ module riscv_cpu (
     input  wire        clk,
     input  wire        rst_n,
 
-    // Programming interface
-    input  wire        prog_mode,
-    input  wire [3:0]  prog_data,
-    input  wire        prog_clk,
+    // I2C interface to external EEPROM
+    inout  wire        sda,
+    output wire        scl,
 
     // Debug interface
     input  wire        debug_en,
@@ -21,33 +20,43 @@ module riscv_cpu (
     // Outputs
     output wire [7:0]  pc_out,
     output wire [7:0]  reg_out,
-    output wire [7:0]  data_bus_out,
-    output wire [7:0]  addr_out,
+    output wire [15:0] addr_out,      // 16-bit addressing for 64KB
     output wire        halt,
     output wire        valid
 );
 
-    // CPU state machine states
-    localparam STATE_FETCH_0   = 3'b000;
-    localparam STATE_FETCH_1   = 3'b001;
-    localparam STATE_FETCH_2   = 3'b010;
-    localparam STATE_FETCH_3   = 3'b011;
-    localparam STATE_DECODE    = 3'b100;
-    localparam STATE_EXECUTE   = 3'b101;
-    localparam STATE_WRITEBACK = 3'b110;
-    localparam STATE_HALT      = 3'b111;
+    // CPU state machine states for I2C memory access
+    localparam STATE_FETCH_START = 4'b0000;  // Start instruction fetch
+    localparam STATE_FETCH_WAIT  = 4'b0001;  // Wait for I2C completion
+    localparam STATE_FETCH_0     = 4'b0010;  // Fetch byte 0
+    localparam STATE_FETCH_1     = 4'b0011;  // Fetch byte 1
+    localparam STATE_FETCH_2     = 4'b0100;  // Fetch byte 2
+    localparam STATE_FETCH_3     = 4'b0101;  // Fetch byte 3
+    localparam STATE_DECODE      = 4'b0110;  // Decode instruction
+    localparam STATE_MEM_START   = 4'b0111;  // Start memory operation
+    localparam STATE_MEM_WAIT    = 4'b1000;  // Wait for memory I2C
+    localparam STATE_EXECUTE     = 4'b1001;  // Execute instruction
+    localparam STATE_WRITEBACK   = 4'b1010;  // Write back results
+    localparam STATE_HALT        = 4'b1111;  // Halt state
 
-    reg [2:0] state, next_state;
+    reg [3:0] state, next_state;
 
     // Internal registers and wires
-    reg [7:0] pc;
+    reg [15:0] pc;                    // 16-bit PC for 64KB addressing
     reg [31:0] instruction;
-    reg [31:0] instruction_next;
-    reg [1:0] fetch_counter; // Track which byte we're fetching
-    wire [7:0] instr_data;
+    reg [1:0] fetch_counter;          // Track which byte we're fetching
+    reg [7:0] instruction_bytes [3:0]; // Buffer for instruction bytes
     wire [7:0] alu_out;
     wire [7:0] reg_data1, reg_data2;
-    wire [7:0] mem_data_out;
+
+    // I2C controller interface
+    reg        i2c_start;
+    reg        i2c_read_write;        // 0=write, 1=read
+    reg [15:0] i2c_address;
+    reg [7:0]  i2c_write_data;
+    wire [7:0] i2c_read_data;
+    wire       i2c_ready;
+    wire       i2c_error;
 
     // Control signals
     wire [4:0] alu_op;
@@ -66,100 +75,168 @@ module riscv_cpu (
     wire [4:0] rs2    = instruction[24:20];
     wire [6:0] funct7 = instruction[31:25];
 
-    // Immediate generation (simplified for 8-bit)
-    wire [7:0] imm_i = instruction[19:12];  // I-type immediate (8-bit)
-    wire [7:0] imm_s = instruction[19:12];  // S-type simplified to 8-bit
-    wire [7:0] imm_b = instruction[19:12];  // B-type simplified to 8-bit
-    wire [7:0] imm_j = instruction[19:12];  // J-type (simplified)
+    // Immediate generation (8-bit)
+    wire [7:0] imm_i = instruction[19:12];  // I-type immediate
+    wire [7:0] imm_s = instruction[19:12];  // S-type simplified
+    wire [7:0] imm_b = instruction[19:12];  // B-type simplified
+    wire [7:0] imm_j = instruction[19:12];  // J-type simplified
 
-    // Data memory (12-byte RAM) - balanced for placement
-    reg [7:0] data_memory [11:0];
-    wire [3:0] mem_addr = alu_out[3:0]; // 4 bits for 12 bytes
+    // Memory mapping for 64KB EEPROM
+    // 0x0000-0x7FFF: Instruction memory (32KB)
+    // 0x8000-0xFFFF: Data memory (32KB)
+    wire [15:0] instruction_addr = (pc << 2) + {14'b0, fetch_counter};
+    wire [15:0] data_addr = 16'h8000 + alu_out; // Data in upper 32KB
 
-    // Memory read/write logic - 12-byte range with bounds checking
-    assign mem_data_out = (mem_addr < 12) ? data_memory[mem_addr] : 8'h00;
+    // Memory data output from I2C
+    reg [7:0] mem_data_out;
 
-    always_ff @(posedge clk) begin
-        if (mem_write_en && state == STATE_EXECUTE && mem_addr < 12) begin
-            data_memory[mem_addr] <= reg_data2;
-        end
-    end
-
-    // Calculate effective address for instruction fetch (5 bits for 32 bytes)
-    wire [7:0] fetch_addr_full = (pc << 2) + {6'b0, fetch_counter};
-    wire [4:0] fetch_addr = fetch_addr_full[4:0];
-
-    // State machine
+    // State machine with I2C memory interface
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            state <= STATE_FETCH_0;
-            pc <= 8'h00;
+            state <= STATE_FETCH_START;
+            pc <= 16'h0000;
             instruction <= 32'h0;
             fetch_counter <= 2'b00;
-        end else if (!prog_mode) begin
+            i2c_start <= 1'b0;
+            i2c_read_write <= 1'b1;  // Default to read
+            i2c_address <= 16'h0000;
+            i2c_write_data <= 8'h00;
+            mem_data_out <= 8'h00;
+        end else begin
             state <= next_state;
 
             case (state)
-                STATE_FETCH_0: begin
+                STATE_FETCH_START: begin
+                    // Start fetching instruction byte
                     fetch_counter <= 2'b00;
-                    instruction_next[7:0] <= instr_data;
+                    i2c_address <= instruction_addr;
+                    i2c_read_write <= 1'b1;  // Read
+                    i2c_start <= 1'b1;
                 end
-                STATE_FETCH_1: begin
-                    fetch_counter <= 2'b01;
-                    instruction_next[15:8] <= instr_data;
+
+                STATE_FETCH_WAIT: begin
+                    i2c_start <= 1'b0;
+                    if (i2c_ready && !i2c_error) begin
+                        instruction_bytes[fetch_counter] <= i2c_read_data;
+                        fetch_counter <= fetch_counter + 1;
+                    end
                 end
-                STATE_FETCH_2: begin
-                    fetch_counter <= 2'b10;
-                    instruction_next[23:16] <= instr_data;
+
+                STATE_FETCH_0, STATE_FETCH_1, STATE_FETCH_2: begin
+                    // Continue fetching remaining bytes
+                    if (state == next_state) begin
+                        i2c_address <= instruction_addr;
+                        i2c_start <= 1'b1;
+                    end
                 end
+
                 STATE_FETCH_3: begin
-                    fetch_counter <= 2'b11;
-                    instruction_next[31:24] <= instr_data;
-                    instruction <= {instr_data, instruction_next[23:0]};
+                    if (i2c_ready && !i2c_error) begin
+                        instruction_bytes[3] <= i2c_read_data;
+                        // Assemble complete instruction
+                        instruction <= {instruction_bytes[3], instruction_bytes[2],
+                                      instruction_bytes[1], instruction_bytes[0]};
+                    end
                 end
+
+                STATE_MEM_START: begin
+                    // Start memory operation for load/store
+                    i2c_address <= data_addr;
+                    i2c_read_write <= ~mem_write_en;  // 0=write, 1=read
+                    i2c_write_data <= reg_data2;
+                    i2c_start <= 1'b1;
+                end
+
+                STATE_MEM_WAIT: begin
+                    i2c_start <= 1'b0;
+                    if (i2c_ready && !i2c_error && mem_read_en) begin
+                        mem_data_out <= i2c_read_data;
+                    end
+                end
+
                 STATE_WRITEBACK: begin
                     if (pc_sel == 2'b01 && branch_taken_alu) // Branch taken
-                        pc <= pc + {{2{imm_b[7]}}, imm_b[7:2]}; // Sign extend and word align (8-bit)
+                        pc <= pc + {{8{imm_b[7]}}, imm_b};
                     else if (pc_sel == 2'b10) // Jump
-                        pc <= pc + {{2{imm_j[7]}}, imm_j[7:2]}; // Sign extend and word align (8-bit)
+                        pc <= pc + {{8{imm_j[7]}}, imm_j};
                     else // Normal increment
                         pc <= pc + 1;
                 end
-                default: begin
-                    // Do nothing for other states (DECODE, EXECUTE, HALT)
-                end
+
             endcase
         end
     end
 
-    // Next state logic - simplified, removed step mode for area
-    always @(*) begin
+    // Next state logic for I2C memory operations
+    always_comb begin
         case (state)
-            STATE_FETCH_0: next_state = STATE_FETCH_1;
-            STATE_FETCH_1: next_state = STATE_FETCH_2;
-            STATE_FETCH_2: next_state = STATE_FETCH_3;
-            STATE_FETCH_3: next_state = STATE_DECODE;
-            STATE_DECODE:  next_state = STATE_EXECUTE;
+            STATE_FETCH_START: next_state = STATE_FETCH_WAIT;
+
+            STATE_FETCH_WAIT: begin
+                if (i2c_ready && !i2c_error) begin
+                    case (fetch_counter)
+                        2'b00: next_state = STATE_FETCH_0;
+                        2'b01: next_state = STATE_FETCH_1;
+                        2'b10: next_state = STATE_FETCH_2;
+                        2'b11: next_state = STATE_DECODE;
+                    endcase
+                end else begin
+                    next_state = STATE_FETCH_WAIT;
+                end
+            end
+
+            STATE_FETCH_0, STATE_FETCH_1, STATE_FETCH_2: begin
+                next_state = STATE_FETCH_WAIT;
+            end
+
+            STATE_DECODE: begin
+                // Check if instruction needs memory access
+                if ((opcode == 7'b0000011) || (opcode == 7'b0100011)) // Load/Store
+                    next_state = STATE_MEM_START;
+                else
+                    next_state = STATE_EXECUTE;
+            end
+
+            STATE_MEM_START: next_state = STATE_MEM_WAIT;
+
+            STATE_MEM_WAIT: begin
+                if (i2c_ready && !i2c_error)
+                    next_state = STATE_EXECUTE;
+                else
+                    next_state = STATE_MEM_WAIT;
+            end
+
             STATE_EXECUTE: next_state = STATE_WRITEBACK;
+
             STATE_WRITEBACK: begin
                 if (instruction == 32'h00000000)
                     next_state = STATE_HALT;
                 else
-                    next_state = STATE_FETCH_0;
+                    next_state = STATE_FETCH_START;
             end
+
             STATE_HALT: next_state = STATE_HALT;
-            default: next_state = STATE_FETCH_0;
+            default: next_state = STATE_FETCH_START;
         endcase
     end
 
-    // Component instances
-    instruction_memory imem (
+    // I2C controller for external EEPROM (configurable)
+    i2c_controller #(
+        .DEVICE_ADDR(7'b1010_000),  // 24LC512 family (0x50)
+        .ADDR_BITS(16),             // 16-bit addressing for 64KB
+        .CLK_DIV(100)               // 100kHz I2C from 10MHz system clock
+    ) i2c_ctrl (
+        .clk(clk),
         .rst_n(rst_n),
-        .addr(fetch_addr),
-        .prog_mode(prog_mode),
-        .prog_data(prog_data),
-        .prog_clk(prog_clk),
-        .data_out(instr_data)
+        .start(i2c_start),
+        .read_write(i2c_read_write),
+        .address({1'b0, i2c_address}),  // Extend to 17-bit
+        .write_data(i2c_write_data),
+        .read_data(i2c_read_data),
+        .ready(i2c_ready),
+        .error(i2c_error),
+        .sda(sda),
+        .scl(scl)
     );
 
     register_file regfile (
@@ -213,10 +290,9 @@ module riscv_cpu (
     );
 
     // Output assignments
-    assign pc_out = pc;
+    assign pc_out = pc[7:0];          // Lower 8 bits of PC for debug
     assign reg_out = instruction[7:0]; // Debug: show instruction byte 0
-    assign data_bus_out = instruction[15:8]; // Debug: show instruction byte 1
-    assign addr_out = alu_out;
+    assign addr_out = i2c_address;    // Current I2C address
     assign halt = (state == STATE_HALT);
     assign valid = (state == STATE_WRITEBACK);
 

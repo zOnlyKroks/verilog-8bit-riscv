@@ -18,34 +18,31 @@ module tt_um_zonlykroks_8bit_riscv (
 );
 
     // Input signal assignments
-    wire prog_mode = ui_in[0];
-    wire debug_en  = ui_in[1];
-    wire step_mode = ui_in[2];
-    wire [3:0] prog_data = ui_in[6:3];
-    wire prog_clk = ui_in[7];
+    wire debug_en = ui_in[0];
 
     // Internal CPU signals
     wire [7:0] pc;
     wire [7:0] reg_out;
-    wire [7:0] data_bus_out;
-    wire [7:0] addr_out;
+    wire [15:0] addr_out;
     wire cpu_halt;
     wire output_valid;
+
+    // I2C signals
+    wire scl_out;
+    wire sda_io;
 
     // CPU reset (active low, synchronized)
     wire cpu_rst_n = rst_n & ena;
 
-    // 8-bit RISC-V CPU instance
+    // 8-bit RISC-V CPU with external EEPROM interface
     riscv_cpu cpu (
         .clk(clk),
         .rst_n(cpu_rst_n),
-        .prog_mode(prog_mode),
-        .prog_data(prog_data),
-        .prog_clk(prog_clk),
+        .sda(sda_io),
+        .scl(scl_out),
         .debug_en(debug_en),
         .pc_out(pc),
         .reg_out(reg_out),
-        .data_bus_out(data_bus_out),
         .addr_out(addr_out),
         .halt(cpu_halt),
         .valid(output_valid)
@@ -53,15 +50,22 @@ module tt_um_zonlykroks_8bit_riscv (
 
     // Output assignments
     assign uo_out[3:0] = pc[3:0];           // Program Counter lower 4 bits
-    assign uo_out[7:4] = reg_out[3:0];      // Register output lower 4 bits
+    assign uo_out[7:4] = addr_out[3:0];     // EEPROM address lower 4 bits
 
-    // Bidirectional I/O assignments
-    assign uio_out[3:0] = data_bus_out[3:0]; // Data bus output
-    assign uio_out[5:4] = addr_out[1:0];     // Address output (2 bits)
-    assign uio_out[6] = cpu_halt;            // Halt signal
-    assign uio_out[7] = output_valid;        // Valid signal
+    // I2C pin assignments
+    assign uio_out[0] = scl_out;            // I2C Clock (SCL)
+    assign sda_io = uio_in[1];              // I2C Data (SDA) - bidirectional
+    assign uio_out[1] = 1'bz;               // SDA tristated when input
 
-    // I/O enable - all bidirectional pins are outputs
-    assign uio_oe = 8'hFF;
+    // Debug outputs
+    assign uio_out[3:2] = addr_out[15:14];  // Address high bits
+    assign uio_out[5:4] = pc[7:6];          // PC high bits
+    assign uio_out[6] = cpu_halt;           // Halt signal
+    assign uio_out[7] = output_valid;       // Valid signal
+
+    // I/O enable configuration
+    assign uio_oe[0] = 1'b1;                // SCL is output
+    assign uio_oe[1] = 1'b0;                // SDA is input (tristated for bidirectional)
+    assign uio_oe[7:2] = 6'b111111;         // Debug outputs are outputs
 
 endmodule
