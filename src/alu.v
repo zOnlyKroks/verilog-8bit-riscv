@@ -25,7 +25,9 @@ module alu (
     localparam ALU_SLL  = 5'b00111;  // Shift left logical
     localparam ALU_SRL  = 5'b01000;  // Shift right logical
     localparam ALU_SRA  = 5'b01001;  // Shift right arithmetic
-    // Multiplication removed - implement in software with shifts+adds
+    localparam ALU_MUL  = 5'b01010;  // Multiplication
+    localparam ALU_MULH = 5'b01011;  // Multiplication high signed
+    localparam ALU_MULHU= 5'b01100;  // Multiplication high unsigned
     localparam ALU_BEQ  = 5'b10000;  // Branch equal
     localparam ALU_BNE  = 5'b10001;  // Branch not equal
     localparam ALU_BLT  = 5'b10010;  // Branch less than
@@ -40,7 +42,12 @@ module alu (
     wire signed [15:0] b_signed = b;
     wire [3:0] shift_amount = b[3:0];  // Use lower 4 bits for shift amount
 
-    // No multiplication hardware - use software implementation
+    // Multiplication logic (hardware accelerated)
+    wire [31:0] mul_full = a * b;                          // Full multiplication result
+    wire [15:0] mul_result = mul_full[15:0];               // Multiplication low
+    wire [15:0] mulh_result = mul_full[31:16];             // Multiplication high (signed)
+    wire [31:0] mulhu_full = a * b;                        // Unsigned multiplication
+    wire [15:0] mulhu_result = mulhu_full[31:16];          // Multiplication high (unsigned)
 
     // ALU operation logic - full functionality with division
     always @(*) begin
@@ -60,6 +67,11 @@ module alu (
             ALU_SLL:  result = a << shift_amount;
             ALU_SRL:  result = a >> shift_amount;
             ALU_SRA:  result = $signed(a) >>> shift_amount;
+
+            // Multiplication operations (hardware accelerated)
+            ALU_MUL:  result = mul_result;
+            ALU_MULH: result = mulh_result;
+            ALU_MULHU:result = mulhu_result;
 
             // Branch operations (result indicates if branch should be taken)
             ALU_BEQ:  result = (a == b) ? 16'h0001 : 16'h0000;

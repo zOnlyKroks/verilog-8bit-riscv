@@ -66,12 +66,22 @@ module control_unit (
                 reg_data_sel = 2'b00; // ALU result
                 case (funct3)
                     3'b000: begin
-                        if (funct7[5])       alu_op = 5'b00001;      // SUB
-                        else                 alu_op = 5'b00000;      // ADD (multiplication removed)
+                        if (funct7 == 7'b0000001) alu_op = 5'b01010;      // MUL (M extension)
+                        else if (funct7[5])       alu_op = 5'b00001;      // SUB
+                        else                      alu_op = 5'b00000;      // ADD
                     end
-                    3'b001: alu_op = 5'b00111;      // SLL (multiplication removed)
-                    3'b010: alu_op = 5'b00101;      // SLT (multiplication removed)
-                    3'b011: alu_op = 5'b00110;      // SLTU (multiplication removed)
+                    3'b001: begin
+                        if (funct7 == 7'b0000001) alu_op = 5'b01011;      // MULH (M extension)
+                        else                       alu_op = 5'b00111;      // SLL
+                    end
+                    3'b010: begin
+                        if (funct7 == 7'b0000001) alu_op = 5'b01011;      // MULHSU (reuse MULH for simplicity)
+                        else                       alu_op = 5'b00101;      // SLT
+                    end
+                    3'b011: begin
+                        if (funct7 == 7'b0000001) alu_op = 5'b01100;      // MULHU
+                        else                       alu_op = 5'b00110;      // SLTU
+                    end
                     3'b100: alu_op = 5'b00100;      // XOR (division removed)
                     3'b101: begin
                         if (funct7[5])       alu_op = 5'b01001;      // SRA

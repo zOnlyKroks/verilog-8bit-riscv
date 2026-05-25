@@ -15,7 +15,7 @@ Full-featured RISC-V processor implementation with external EEPROM memory optimi
 - **Memory Interface**: I2C master controller (100kHz)
 - **Execution**: Multi-cycle (10 states including I2C memory access)
 
-### Instruction Set (RV32I Base)
+### Instruction Set (RV32I + Partial M Extension)
 **Arithmetic/Logic**:
 - `ADD rd, rs1, rs2` - Addition
 - `SUB rd, rs1, rs2` - Subtraction  
@@ -30,11 +30,14 @@ Full-featured RISC-V processor implementation with external EEPROM memory optimi
 - `SRL rd, rs1, rs2` - Shift right logical
 - `SRA rd, rs1, rs2` - Shift right arithmetic
 
-**Arithmetic Operations**: All implemented in software when needed
-- **Multiplication**: Software implementation using shift and add
-- **Division**: Software implementation using shift and subtract  
-- Hardware provides: ADD, SUB, AND, OR, XOR, shifts, comparisons
-- Software algorithms handle complex operations efficiently
+**Multiplication Operations (M Extension)**:
+- `MUL rd, rs1, rs2` - Multiply (low 16 bits) - **Hardware accelerated**
+- `MULH rd, rs1, rs2` - Multiply high (signed × signed) - **Hardware accelerated**  
+- `MULHU rd, rs1, rs2` - Multiply high (unsigned × unsigned) - **Hardware accelerated**
+
+**Division**: Software implementation using shift operations
+- Division implemented efficiently in software using barrel shifters
+- Hardware multiplication + software division = optimal area/performance balance
 
 **Immediate Operations**:
 - `ADDI rd, rs1, imm` - Add immediate
@@ -276,8 +279,9 @@ Instructions referencing x4-x31 will use x0 (reads) or be ignored (writes).
 ✅ **All shift operations**: Logical and arithmetic shifts  
 ✅ **All comparison operations**: Signed and unsigned variants  
 ✅ **All branch operations**: Including unsigned comparisons  
-✅ **Software multiply/divide**: Efficient algorithms using shift and add/subtract  
-✅ **Hardware shifts**: All shift operations (SLL, SRL, SRA) in hardware  
+✅ **Hardware multiply**: Single-cycle 16×16→32-bit multiplication (MUL, MULH, MULHU)  
+✅ **Software divide**: Efficient division using barrel shifter algorithms  
+✅ **Barrel shifters**: All shift operations (SLL, SRL, SRA) - 0-15 bit single-cycle  
 ✅ **External 64KB memory**: Via I2C EEPROM interface
 
 ## File Structure
