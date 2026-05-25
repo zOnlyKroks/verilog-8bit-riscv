@@ -16,8 +16,8 @@ module control_unit (
     output reg        mem_read_en,  // Memory read enable
     output reg        mem_write_en, // Memory write enable
     output reg  [1:0] pc_sel,      // PC source select
-    output reg  [1:0] reg_data_sel, // Register write data select
-    output reg        jump_taken   // Jump instruction
+    output reg  [1:0] reg_data_sel // Register write data select
+    // output reg        jump_taken   // Removed unused signal
 );
 
     // RISC-V instruction opcodes (only implemented ones)
@@ -39,7 +39,7 @@ module control_unit (
         mem_write_en = 1'b0;
         pc_sel = 2'b00;        // Normal PC increment
         reg_data_sel = 2'b00;  // ALU result
-        jump_taken = 1'b0;
+        // jump_taken = 1'b0;     // Removed unused signal
 
         case (opcode)
             OP_IMM: begin
@@ -116,14 +116,14 @@ module control_unit (
                 reg_write_en = 1'b1;
                 reg_data_sel = 2'b10; // PC + 4 (return address)
                 pc_sel = 2'b10;       // Jump
-                jump_taken = 1'b1;
+                // jump_taken = 1'b1;    // Removed unused signal
             end
 
             OP_JALR: begin
                 reg_write_en = 1'b1;
                 reg_data_sel = 2'b10; // PC + 4 (return address)
                 pc_sel = 2'b11;       // Jump register
-                jump_taken = 1'b1;
+                // jump_taken = 1'b1;    // Removed unused signal
                 alu_op = 5'b00000;     // ADD for target address calculation
             end
 

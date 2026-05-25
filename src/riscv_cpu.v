@@ -268,8 +268,8 @@ module riscv_cpu (
         .mem_read_en(mem_read_en),
         .mem_write_en(mem_write_en),
         .pc_sel(pc_sel),
-        .reg_data_sel(reg_data_sel),
-        .jump_taken(jump_taken)
+        .reg_data_sel(reg_data_sel)
+        // .jump_taken(jump_taken) // Removed unused signal
     );
 
     // Output assignments
