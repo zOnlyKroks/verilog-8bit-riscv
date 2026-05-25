@@ -20,9 +20,8 @@ module control_unit (
     output reg        jump_taken   // Jump instruction
 );
 
-    // RISC-V instruction opcodes
+    // RISC-V instruction opcodes (only implemented ones)
     localparam OP_LUI     = 7'b0110111;  // Load Upper Immediate
-    localparam OP_AUIPC   = 7'b0010111;  // Add Upper Immediate to PC
     localparam OP_JAL     = 7'b1101111;  // Jump and Link
     localparam OP_JALR    = 7'b1100111;  // Jump and Link Register
     localparam OP_BRANCH  = 7'b1100011;  // Branch instructions
@@ -30,8 +29,6 @@ module control_unit (
     localparam OP_STORE   = 7'b0100011;  // Store instructions
     localparam OP_IMM     = 7'b0010011;  // Immediate arithmetic
     localparam OP_REG     = 7'b0110011;  // Register-register arithmetic
-    localparam OP_FENCE   = 7'b0001111;  // Fence (not implemented)
-    localparam OP_SYSTEM  = 7'b1110011;  // System instructions
 
     // ALU operation mapping
     always @(*) begin

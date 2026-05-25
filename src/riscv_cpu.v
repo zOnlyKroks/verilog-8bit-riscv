@@ -125,6 +125,9 @@ module riscv_cpu (
                     else // Normal increment
                         pc <= pc + 1;
                 end
+                default: begin
+                    // Do nothing for other states (DECODE, EXECUTE, HALT)
+                end
             endcase
         end
     end
@@ -151,7 +154,6 @@ module riscv_cpu (
 
     // Component instances
     instruction_memory imem (
-        .clk(clk),
         .rst_n(rst_n),
         .addr(fetch_addr),
         .prog_mode(prog_mode),

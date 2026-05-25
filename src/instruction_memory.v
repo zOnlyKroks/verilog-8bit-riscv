@@ -8,7 +8,6 @@
 `default_nettype none
 
 module instruction_memory (
-    input  wire        clk,
     input  wire        rst_n,
     input  wire [4:0]  addr,        // Instruction address (5 bits for 32 bytes)
     input  wire        prog_mode,   // Programming mode
@@ -45,6 +44,7 @@ module instruction_memory (
                     memory[prog_addr] <= {prog_data, prog_byte_buffer[3:0]};
                     prog_addr <= prog_addr + 1;
                 end
+                default: prog_nibble_count <= 2'b00;
             endcase
         end
     end
