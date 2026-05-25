@@ -23,7 +23,7 @@ module control_unit (
     localparam OP_SUB     = 4'b0001;  // SUB operation
     localparam OP_MUL     = 4'b0010;  // MUL operation
     localparam OP_LOGIC   = 4'b0011;  // LOGIC operations: AND, OR, XOR, NOT (uses immediate field)
-    localparam OP_DIV     = 4'b0100;  // DIV operations: DIV, DIVU, REM, REMU (uses immediate field)
+    localparam OP_RESERVED2 = 4'b0100; // Reserved (removed division for area)
     localparam OP_RESERVED = 4'b0101; // Reserved for future use
     localparam OP_SLL     = 4'b0110;  // Shift left logical
     localparam OP_SRL     = 4'b0111;  // Shift right logical
@@ -76,10 +76,8 @@ module control_unit (
                 endcase
             end
 
-            OP_DIV: begin
-                reg_write_en = 1'b1;
-                reg_data_sel = 2'b00; // ALU result
-                alu_op = 5'b01011;    // Simple DIV operation
+            OP_RESERVED2: begin
+                // Reserved - removed division for area savings
             end
 
             OP_RESERVED: begin

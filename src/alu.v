@@ -29,7 +29,7 @@ module alu (
     localparam ALU_SRL  = 5'b01000;  // Shift right logical
     localparam ALU_SRA  = 5'b01001;  // Shift right arithmetic
     localparam ALU_MUL  = 5'b01010;  // Multiplication
-    localparam ALU_DIV  = 5'b01011;  // Division (simplified)
+    // localparam ALU_DIV  = 5'b01011;  // Division removed for area savings
     localparam ALU_NOT  = 5'b01111;  // Bitwise NOT
     localparam ALU_BEQ  = 5'b10000;  // Branch equal
     localparam ALU_BNE  = 5'b10001;  // Branch not equal
@@ -96,14 +96,7 @@ module alu (
                 result = a[7:0] * b[7:0];  // 8x8→16 multiplication for better timing
             end
 
-            // Simplified division operation (basic only)
-            ALU_DIV: begin
-                if (b == 16'h0000) begin
-                    result = 16'h0000;  // Division by zero returns zero (simplified)
-                end else begin
-                    result = a / b;  // Basic unsigned division only
-                end
-            end
+            // Division removed for area savings
 
             // Branch operations (shared comparison logic)
             ALU_BEQ:  result = equal ? 16'h0001 : 16'h0000;

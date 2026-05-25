@@ -102,7 +102,7 @@ module riscv_cpu (
                 STATE_FETCH: begin
                     // Efficient 16-bit instruction fetch (2 bytes)
                     if (!i2c_start) begin
-                        i2c_address <= (pc << 1) + fetch_counter;  // Byte address for 16-bit words
+                        i2c_address <= (pc << 1) + {15'b0, fetch_counter};  // Byte address for 16-bit words
                         i2c_read_write <= 1'b1;    // Read
                         i2c_start <= 1'b1;
                     end else if (i2c_ready && !i2c_error) begin
