@@ -28,16 +28,13 @@ module alu (
     localparam ALU_MUL  = 5'b01010;  // Multiplication
     localparam ALU_MULH = 5'b01011;  // Multiplication high signed
     localparam ALU_MULHU= 5'b01100;  // Multiplication high unsigned
-    localparam ALU_DIV  = 5'b01101;  // Division
-    localparam ALU_DIVU = 5'b01110;  // Division unsigned
-    localparam ALU_REM  = 5'b01111;  // Remainder
-    localparam ALU_REMU = 5'b10000;  // Remainder unsigned
-    localparam ALU_BEQ  = 5'b11000;  // Branch equal
-    localparam ALU_BNE  = 5'b11001;  // Branch not equal
-    localparam ALU_BLT  = 5'b11010;  // Branch less than
-    localparam ALU_BGE  = 5'b11011;  // Branch greater/equal
-    localparam ALU_BLTU = 5'b11100;  // Branch less than unsigned
-    localparam ALU_BGEU = 5'b11101;  // Branch greater/equal unsigned
+    // Division removed - implement in software with shifts
+    localparam ALU_BEQ  = 5'b10000;  // Branch equal
+    localparam ALU_BNE  = 5'b10001;  // Branch not equal
+    localparam ALU_BLT  = 5'b10010;  // Branch less than
+    localparam ALU_BGE  = 5'b10011;  // Branch greater/equal
+    localparam ALU_BLTU = 5'b10100;  // Branch less than unsigned
+    localparam ALU_BGEU = 5'b10101;  // Branch greater/equal unsigned
 
     // Internal signals
     wire [16:0] add_result = {1'b0, a} + {1'b0, b};
@@ -52,12 +49,6 @@ module alu (
     wire [15:0] mulh_result = mul_full[31:16];             // Multiplication high (signed)
     wire [31:0] mulhu_full = a * b;                        // Unsigned multiplication
     wire [15:0] mulhu_result = mulhu_full[31:16];          // Multiplication high (unsigned)
-
-    // Division logic (simple implementation)
-    wire [15:0] div_result = (b != 16'h0000) ? a / b : 16'hFFFF;  // Signed division
-    wire [15:0] divu_result = (b != 16'h0000) ? a / b : 16'hFFFF; // Unsigned division
-    wire [15:0] rem_result = (b != 16'h0000) ? a % b : a;          // Signed remainder
-    wire [15:0] remu_result = (b != 16'h0000) ? a % b : a;         // Unsigned remainder
 
     // ALU operation logic - full functionality with division
     always @(*) begin
@@ -82,12 +73,6 @@ module alu (
             ALU_MUL:  result = mul_result;
             ALU_MULH: result = mulh_result;
             ALU_MULHU:result = mulhu_result;
-
-            // Division and remainder operations
-            ALU_DIV:  result = div_result;
-            ALU_DIVU: result = divu_result;
-            ALU_REM:  result = rem_result;
-            ALU_REMU: result = remu_result;
 
             // Branch operations (result indicates if branch should be taken)
             ALU_BEQ:  result = (a == b) ? 16'h0001 : 16'h0000;

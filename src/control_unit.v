@@ -82,23 +82,13 @@ module control_unit (
                         if (funct7 == 7'b0000001) alu_op = 5'b01100;      // MULHU
                         else                       alu_op = 5'b00110;      // SLTU
                     end
-                    3'b100: begin
-                        if (funct7 == 7'b0000001) alu_op = 5'b01101;      // DIV
-                        else                       alu_op = 5'b00100;      // XOR
-                    end
+                    3'b100: alu_op = 5'b00100;      // XOR (division removed)
                     3'b101: begin
-                        if (funct7 == 7'b0000001) alu_op = 5'b01110;      // DIVU
-                        else if (funct7[5])       alu_op = 5'b01001;      // SRA
-                        else                      alu_op = 5'b01000;      // SRL
+                        if (funct7[5])       alu_op = 5'b01001;      // SRA
+                        else                 alu_op = 5'b01000;      // SRL
                     end
-                    3'b110: begin
-                        if (funct7 == 7'b0000001) alu_op = 5'b01111;      // REM
-                        else                       alu_op = 5'b00011;      // OR
-                    end
-                    3'b111: begin
-                        if (funct7 == 7'b0000001) alu_op = 5'b10000;      // REMU
-                        else                       alu_op = 5'b00010;      // AND
-                    end
+                    3'b110: alu_op = 5'b00011;      // OR (division removed)
+                    3'b111: alu_op = 5'b00010;      // AND (division removed)
                     default: alu_op = 5'b00000;
                 endcase
             end
@@ -118,13 +108,13 @@ module control_unit (
             OP_BRANCH: begin
                 pc_sel = 2'b01; // Will use branch_taken signal from ALU
                 case (funct3)
-                    3'b000: alu_op = 5'b11000; // BEQ
-                    3'b001: alu_op = 5'b11001; // BNE
-                    3'b100: alu_op = 5'b11010; // BLT
-                    3'b101: alu_op = 5'b11011; // BGE
-                    3'b110: alu_op = 5'b11100; // BLTU
-                    3'b111: alu_op = 5'b11101; // BGEU
-                    default: alu_op = 5'b11000;
+                    3'b000: alu_op = 5'b10000; // BEQ
+                    3'b001: alu_op = 5'b10001; // BNE
+                    3'b100: alu_op = 5'b10010; // BLT
+                    3'b101: alu_op = 5'b10011; // BGE
+                    3'b110: alu_op = 5'b10100; // BLTU
+                    3'b111: alu_op = 5'b10101; // BGEU
+                    default: alu_op = 5'b10000;
                 endcase
             end
 

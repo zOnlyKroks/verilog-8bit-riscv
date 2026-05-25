@@ -31,15 +31,13 @@ Full-featured RISC-V processor implementation with external EEPROM memory optimi
 - `SRA rd, rs1, rs2` - Shift right arithmetic
 
 **Multiplication Operations (M Extension)**:
-- `MUL rd, rs1, rs2` - Multiply (low 8 bits)
+- `MUL rd, rs1, rs2` - Multiply (low 16 bits)
 - `MULH rd, rs1, rs2` - Multiply high (signed × signed)
 - `MULHU rd, rs1, rs2` - Multiply high (unsigned × unsigned)
 
-**Division Operations (M Extension)**:
-- `DIV rd, rs1, rs2` - Division (signed)
-- `DIVU rd, rs1, rs2` - Division (unsigned)
-- `REM rd, rs1, rs2` - Remainder (signed)
-- `REMU rd, rs1, rs2` - Remainder (unsigned)
+**Division**: Software implementation using shift operations
+- Division and remainder implemented in software using `SRL`, `SRA`, `SLL`
+- Hardware multiplication + software division saves significant area
 
 **Immediate Operations**:
 - `ADDI rd, rs1, imm` - Add immediate
@@ -281,7 +279,8 @@ Instructions referencing x4-x31 will use x0 (reads) or be ignored (writes).
 ✅ **All shift operations**: Logical and arithmetic shifts  
 ✅ **All comparison operations**: Signed and unsigned variants  
 ✅ **All branch operations**: Including unsigned comparisons  
-✅ **Hardware multiply/divide**: Single-cycle 16×16→32-bit multiplication  
+✅ **Hardware multiply**: Single-cycle 16×16→32-bit multiplication  
+✅ **Software divide**: Efficient division using shift operations  
 ✅ **External 64KB memory**: Via I2C EEPROM interface
 
 ## File Structure
