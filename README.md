@@ -1,112 +1,192 @@
-![](../../workflows/gds/badge.svg) ![](../../workflows/docs/badge.svg) ![](../../workflows/test/badge.svg) ![](../../workflows/fpga/badge.svg)
+# 8-bit RISC-V Processor for TinyTapeout
 
-# 8-bit RISC-V Processor
+Compact RISC-V processor implementation optimized for silicon fabrication via TinyTapeout IHP shuttle.
 
-**An ambitious 8-bit RISC-V processor implementation for TinyTapeout**
+**Author**: Finn Rades (zOnlyKroks)  
+**Target**: TinyTapeout 1x2 tile (334x108 μm)  
+**Utilization**: 80% @ 24KB ROM configuration
 
-- [Read the detailed documentation](docs/info.md)
-- Author: Finn Rades (zOnlyKroks)
+## Technical Specifications
 
-## What is this?
+### Architecture
+- **Datapath**: 8-bit Harvard architecture
+- **Registers**: 4 general-purpose (x0-x3), x0 hardwired to zero
+- **Instruction Memory**: 24 bytes ROM (6 instructions)
+- **Data Memory**: 12 bytes RAM
+- **Execution**: Multi-cycle (7 states: FETCH_0-3, DECODE, EXECUTE, WRITEBACK, HALT)
 
-This project implements a complete 8-bit RISC-V processor designed to fit within a single TinyTapeout tile (1x1, ~167x108 μm). Despite the area constraints, it implements a substantial subset of the RV32I base instruction set adapted for 8-bit operation.
+### Instruction Set (RV32I Subset)
+**Arithmetic/Logic**:
+- `ADD rd, rs1, rs2` - Addition
+- `SUB rd, rs1, rs2` - Subtraction  
+- `AND rd, rs1, rs2` - Bitwise AND
+- `OR rd, rs1, rs2` - Bitwise OR
+- `XOR rd, rs1, rs2` - Bitwise XOR
+- `SLT rd, rs1, rs2` - Set less than (signed)
+- `SLL rd, rs1, rs2` - Shift left logical
 
-## Architecture Highlights
+**Immediate Operations**:
+- `ADDI rd, rs1, imm` - Add immediate
+- `ANDI rd, rs1, imm` - AND immediate
+- `ORI rd, rs1, imm` - OR immediate  
+- `XORI rd, rs1, imm` - XOR immediate
+- `SLTI rd, rs1, imm` - Set less than immediate
+- `SLLI rd, rs1, shamt` - Shift left logical immediate
 
-- **8-bit datapath** with 16 general-purpose registers (x0-x15)
-- **Harvard architecture** with separate instruction ROM (256 bytes) and data RAM (64 bytes)  
-- **Multi-cycle execution** (6-7 cycles per instruction) to minimize combinatorial complexity
-- **Programming interface** via input pins for loading custom programs
-- **Debug interface** with PC and register visibility
-- **Built-in test program** implementing Fibonacci sequence
+**Memory**:
+- `LB rd, offset(rs1)` - Load byte
+- `SB rs2, offset(rs1)` - Store byte
 
-## Key Features
+**Branches**:
+- `BEQ rs1, rs2, offset` - Branch if equal
+- `BNE rs1, rs2, offset` - Branch if not equal
+- `BLT rs1, rs2, offset` - Branch if less than
+- `BGE rs1, rs2, offset` - Branch if greater/equal
 
-### Instruction Set
-Supports essential RISC-V instructions adapted for 8-bit:
-- **Arithmetic**: ADD, SUB, AND, OR, XOR, SLT
-- **Immediate**: ADDI, ANDI, ORI, XORI, SLTI  
-- **Memory**: LB, SB (8-bit load/store)
-- **Branches**: BEQ, BNE, BLT, BGE
-- **Jumps**: JAL, JALR
+**Jumps**:
+- `JAL rd, offset` - Jump and link
+- `JALR rd, rs1, offset` - Jump and link register
+- `LUI rd, imm` - Load upper immediate
 
-### I/O Interface
-- **Programming Mode**: Load instructions via 4-bit nibbles
-- **Debug Outputs**: PC and register values visible on output pins
-- **Step Mode**: Single-step execution for debugging
-- **Halt Detection**: Automatic halt on invalid instructions
+### Pin Configuration
+
+**Inputs** (`ui_in[7:0]`):
+- `ui_in[0]` - Reset (active low)
+- `ui_in[1]` - Programming mode enable
+- `ui_in[7:4]` - Programming data (4-bit nibbles)
+
+**Bidirectional** (`uio_in[7:0]`, `uio_out[7:0]`):
+- `uio_in[0]` - Programming clock
+- `uio_out[3:0]` - Instruction data debug
+- `uio_out[6]` - Halt flag
+- `uio_out[7]` - Valid instruction flag
+
+**Outputs** (`uo_out[7:0]`):
+- `uo_out[3:0]` - Program counter (4 LSBs)
+- `uo_out[7:4]` - Opcode debug (4 LSBs)
+
+### Fabrication Specifications
+- **Process**: IHP 130nm
+- **Die Area**: 1x2 TinyTapeout tile (334x108 μm)
+- **Gate Count**: ~2500 gates
+- **Clock Target**: 10 MHz maximum
+- **Power**: <1mW estimated
+
+## Programming the Device
+
+### TinyTapeout Dev Board Setup
+
+1. **Power Connection**
+   - Connect 3.3V supply to VDD
+   - Connect GND to VSS
+   - Apply clock signal (1-10 MHz) to CLK
+
+2. **Enter Programming Mode**
+   ```
+   ui_in[1] = 1    // Enable programming mode
+   ui_in[0] = 0    // Hold reset
+   ui_in[0] = 1    // Release reset
+   ```
+
+3. **Load Instructions**
+   Each 32-bit instruction requires 8 clock cycles of 4-bit nibbles:
+   ```
+   for each instruction word:
+     for nibble in [7:0]:  // LSB first
+       uio_in[7:4] = instruction_nibbles[nibble]
+       uio_in[0] = 1  // Programming clock high
+       uio_in[0] = 0  // Programming clock low
+   ```
+
+4. **Start Execution**
+   ```
+   ui_in[1] = 0    // Disable programming mode
+   ```
+
+### Example Program Loading
+
+Load simple counter program:
+```assembly
+# Instruction 0: ADDI x1, x0, 1  (0x00100093)
+# Instruction 1: ADDI x1, x1, 1  (0x00108093)  
+# Instruction 2: ADDI x2, x1, 0  (0x00008113)
+```
+
+Programming sequence:
+```
+// Instruction 0: 0x00100093
+Nibble 0: 0x3, Nibble 1: 0x0, Nibble 2: 0x0, Nibble 3: 0x9
+Nibble 4: 0x0, Nibble 5: 0x1, Nibble 6: 0x0, Nibble 7: 0x0
+
+// Instruction 1: 0x00108093  
+Nibble 0: 0x3, Nibble 1: 0x0, Nibble 2: 0x8, Nibble 3: 0x9
+Nibble 4: 0x0, Nibble 5: 0x1, Nibble 6: 0x0, Nibble 7: 0x0
+
+// Instruction 2: 0x00008113
+Nibble 0: 0x3, Nibble 1: 0x1, Nibble 2: 0x8, Nibble 3: 0x0
+Nibble 4: 0x0, Nibble 5: 0x0, Nibble 6: 0x0, Nibble 7: 0x0
+```
+
+## Debug Interface
+
+### Runtime Monitoring
+- **PC Output**: `uo_out[3:0]` shows current program counter
+- **Opcode**: `uo_out[7:4]` shows current instruction opcode
+- **Halt Status**: `uio_out[6]` indicates processor halt
+- **Valid Flag**: `uio_out[7]` indicates valid instruction execution
+
+### Memory Map
+**Instruction Memory**: 0x00-0x17 (24 bytes)  
+**Data Memory**: 0x00-0x0B (12 bytes)
+
+### Register Constraints
+Only registers x0-x3 are implemented:
+- x0: Always zero (RISC-V standard)
+- x1-x3: General purpose 8-bit registers
+
+Instructions referencing x4-x31 will use x0 (reads) or be ignored (writes).
+
+## Limitations
+
+- **Reduced register set**: Only 4 of 32 RISC-V registers
+- **Limited memory**: 24B ROM, 12B RAM
+- **No interrupts**: Polling-based I/O only  
+- **No multiplication/division**: Software implementation required
+- **No floating point**: Integer operations only
+- **8-bit addressing**: 256-byte maximum address space
 
 ## File Structure
 
 ```
 src/
-├── project.v          # TinyTapeout wrapper module
-├── riscv_cpu.v        # Main CPU with state machine and datapath
-├── alu.v              # 8-bit ALU supporting all operations
-├── register_file.v    # 16 x 8-bit register file
-├── control_unit.v     # Instruction decoder and control signal generator
-└── instruction_memory.v # 256-byte ROM with programming interface
+├── project.v           # TinyTapeout wrapper
+├── riscv_cpu.v         # CPU core with state machine  
+├── alu.v               # 8-bit ALU
+├── register_file.v     # 4x8-bit register file
+├── control_unit.v      # Instruction decoder
+├── instruction_memory.v # 24-byte ROM
+└── config.json         # OpenROAD configuration
 
 test/
-├── tb.v               # Verilog testbench
-├── test.py            # Comprehensive Python tests using cocotb
-└── Makefile           # Test configuration
+├── test.py             # Cocotb verification
+└── Makefile            # Test automation
 ```
 
-## How to Test
+## Build Process
 
-### Run the simulation
+### Simulation
 ```bash
-cd test
-make
+cd test && make
 ```
 
-### Programming Mode
-1. Set `PROG_MODE` high
-2. Use `PROG_CLK` to clock in 4-bit nibbles via `PROG_DATA`
-3. Each instruction requires 8 nibbles (32 bits total)
+### Synthesis & Place-and-Route  
+```bash
+tt --debug place-and-route
+```
 
-### Normal Operation  
-1. Set `PROG_MODE` low to start execution
-2. Enable `DEBUG_EN` to see internal state on output pins
-3. Use `STEP_MODE` for single-step debugging
+### GDS Generation
+```bash  
+tt --debug gds
+```
 
-## Design Optimizations
-
-This processor is optimized for area efficiency:
-- **Reduced register count**: 16 instead of 32 registers saves ~128 flip-flops
-- **Multi-cycle design**: Reduces combinatorial logic complexity
-- **Shared ALU**: Single ALU handles all arithmetic, logic, and comparison operations
-- **Compact instruction memory**: 256 bytes fits typical embedded programs
-- **Minimal control logic**: Simple FSM-based control unit
-
-## Educational Value
-
-Perfect for learning:
-- RISC-V instruction set architecture  
-- Multi-cycle processor design
-- ASIC design constraints and optimization
-- Hardware/software co-design
-- Real chip fabrication process
-
-## Technical Specifications
-
-- **Technology**: IHP 130nm (via TinyTapeout)
-- **Die Area**: 1x1 tile (167x108 μm)
-- **Clock**: Up to 10 MHz target
-- **Power**: TBD (will be measured post-fabrication)
-- **Gate Count**: ~2000-3000 gates (estimated)
-
-## What's Next?
-
-This design will be fabricated through TinyTapeout's IHP shuttle, creating a real silicon implementation of a RISC-V processor that you can hold in your hand!
-
-## Resources
-
-- [RISC-V Specification](https://riscv.org/technical/specifications/)
-- [TinyTapeout](https://tinytapeout.com)
-- [Digital Design Tutorials](https://tinytapeout.com/digital_design/)
-
----
-
-*Built with passion for processor architecture and the magic of silicon! 🚀*
+Target utilization: 80% @ 1x2 tile with 24-byte ROM configuration.

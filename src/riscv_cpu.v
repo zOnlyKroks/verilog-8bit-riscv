@@ -72,15 +72,15 @@ module riscv_cpu (
     wire [7:0] imm_b = instruction[19:12];  // B-type simplified to 8-bit
     wire [7:0] imm_j = instruction[19:12];  // J-type (simplified)
 
-    // Data memory (12-byte RAM) - small but useful size
-    reg [7:0] data_memory [11:0];
-    wire [3:0] mem_addr = alu_out[3:0]; // 4 bits for 12 bytes
+    // Data memory (16-byte RAM) - expanded for better utilization
+    reg [7:0] data_memory [15:0];
+    wire [3:0] mem_addr = alu_out[3:0]; // 4 bits for 16 bytes
 
-    // Memory read/write logic - only access valid addresses
-    assign mem_data_out = (mem_addr < 12) ? data_memory[mem_addr] : 8'h00;
+    // Memory read/write logic - full 16-byte range
+    assign mem_data_out = data_memory[mem_addr];
 
     always_ff @(posedge clk) begin
-        if (mem_write_en && state == STATE_EXECUTE && mem_addr < 12) begin
+        if (mem_write_en && state == STATE_EXECUTE) begin
             data_memory[mem_addr] <= reg_data2;
         end
     end
