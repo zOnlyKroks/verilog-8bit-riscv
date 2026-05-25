@@ -10,25 +10,25 @@
 module instruction_memory (
     input  wire        clk,
     input  wire        rst_n,
-    input  wire [2:0]  addr,        // Instruction address (3 bits for 8 bytes)
+    input  wire [3:0]  addr,        // Instruction address (4 bits for 12 bytes)
     input  wire        prog_mode,   // Programming mode
     input  wire [3:0]  prog_data,   // Programming data (4-bit nibbles)
     input  wire        prog_clk,    // Programming clock
     output reg  [7:0]  data_out     // 8-bit instruction data output
 );
 
-    // Memory array: 8 bytes (2 instructions x 4 bytes each)
-    reg [7:0] memory [7:0];
+    // Memory array: 12 bytes (3 instructions x 4 bytes each)
+    reg [7:0] memory [11:0];
 
     // Programming interface state
-    reg [2:0] prog_addr;
+    reg [3:0] prog_addr;
     reg [1:0] prog_nibble_count;
     reg [7:0] prog_byte_buffer;
 
     // Programming logic
     always_ff @(posedge prog_clk or negedge rst_n) begin
         if (!rst_n) begin
-            prog_addr <= 3'h0;
+            prog_addr <= 4'h0;
             prog_nibble_count <= 2'b00;
             prog_byte_buffer <= 8'h00;
         end else if (prog_mode) begin
@@ -53,12 +53,12 @@ module instruction_memory (
     integer i;
     initial begin
         // Initialize all memory to zero
-        for (i = 0; i < 8; i = i + 1) begin
+        for (i = 0; i < 12; i = i + 1) begin
             memory[i] = 8'h00;
         end
 
-        // Minimal test program: 2 instructions only
-        // Instruction 0: ADDI x1, x0, 1    // x1 = 1 (using only x0, x1)
+        // Test program: 3 instructions using x0, x1, x2
+        // Instruction 0: ADDI x1, x0, 1    // x1 = 1
         // 0x00100093 = ADDI x1, x0, 1
         memory[0]  = 8'h93; // [7:0]   = opcode + rd[0]
         memory[1]  = 8'h00; // [15:8]  = rd[4:1] + funct3
@@ -71,6 +71,13 @@ module instruction_memory (
         memory[5]  = 8'h80; // [15:8]  = rd[4:1] + funct3
         memory[6]  = 8'h10; // [23:16] = imm[7:0] + rs1[0]
         memory[7]  = 8'h00; // [31:24] = imm[11:8] + rs1[4:1]
+
+        // Instruction 2: ADDI x2, x1, 0    // x2 = x1 (copy for output)
+        // 0x00008113 = ADDI x2, x1, 0
+        memory[8]  = 8'h13; // [7:0]   = opcode + rd[0]
+        memory[9]  = 8'h81; // [15:8]  = rd[4:1] + funct3
+        memory[10] = 8'h00; // [23:16] = imm[7:0] + rs1[0]
+        memory[11] = 8'h00; // [31:24] = imm[11:8] + rs1[4:1]
     end
 
     // Read logic
