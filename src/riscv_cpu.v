@@ -86,8 +86,8 @@ module riscv_cpu (
         if (!rst_n) begin
             state <= STATE_FETCH;
             pc <= 16'h0000;
-            instruction <= 32'h0;
-            fetch_counter <= 2'b00;
+            instruction <= 16'h0000;
+            fetch_counter <= 1'b0;
             i2c_start <= 1'b0;
             i2c_read_write <= 1'b1;  // Default to read
             i2c_address <= 16'h0000;
@@ -119,7 +119,7 @@ module riscv_cpu (
 
                 STATE_EXECUTE: begin
                     // Combined decode/execute/memory
-                    if ((opcode == 7'b0000011) && !i2c_start) begin // Load
+                    if ((opcode == 4'b0010) && !i2c_start) begin // Load
                         i2c_address <= 16'h8000 + alu_out[15:0];
                         i2c_read_write <= 1'b1;
                         i2c_start <= 1'b1;
@@ -153,14 +153,14 @@ module riscv_cpu (
             end
 
             STATE_EXECUTE: begin
-                if ((opcode == 7'b0000011) && !i2c_ready) // Load waiting
+                if ((opcode == 4'b0010) && !i2c_ready) // Load waiting
                     next_state = STATE_EXECUTE;
                 else
                     next_state = STATE_WRITEBACK;
             end
 
             STATE_WRITEBACK: begin
-                if (instruction == 32'h00000000)  // NOP = halt
+                if (instruction == 16'h0000)  // NOP = halt
                     next_state = STATE_HALT;
                 else
                     next_state = STATE_FETCH;

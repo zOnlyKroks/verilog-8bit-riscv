@@ -22,7 +22,6 @@ project:
     - "i2c_controller.v"
     - "alu.v"
     - "barrel_shifter.v"
-    - "shared_multiplier.v"
     - "register_file.v"
     - "control_unit.v"
 

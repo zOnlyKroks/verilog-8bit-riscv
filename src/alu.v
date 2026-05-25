@@ -28,8 +28,8 @@ module alu (
     localparam ALU_SLL  = 5'b00111;  // Shift left logical
     localparam ALU_SRL  = 5'b01000;  // Shift right logical
     localparam ALU_SRA  = 5'b01001;  // Shift right arithmetic
-    localparam ALU_MUL  = 5'b01010;  // Multiplication
-    localparam ALU_MULH = 5'b01011;  // Multiplication high result
+    // localparam ALU_MUL  = 5'b01010;  // Removed for area optimization
+    // localparam ALU_MULH = 5'b01011;  // Removed for area optimization
     localparam ALU_BEQ  = 5'b10000;  // Branch equal
     localparam ALU_BNE  = 5'b10001;  // Branch not equal
     localparam ALU_BLT  = 5'b10010;  // Branch less than
@@ -52,63 +52,23 @@ module alu (
     wire shift_left = (alu_op == ALU_SLL);
     wire shift_arith = (alu_op == ALU_SRA);
 
-    // Multiplication control
-    wire mul_start = (alu_op == ALU_MUL || alu_op == ALU_MULH);
-    wire mul_high = (alu_op == ALU_MULH);
-    wire [15:0] mul_result;
-    wire mul_done;
+    // Multiplication removed for area optimization
+    // wire mul_start = (alu_op == ALU_MUL || alu_op == ALU_MULH);
+    // wire mul_high = (alu_op == ALU_MULH);
+    // wire [15:0] mul_result;
+    // wire mul_done;
 
-    // Shared multiplier (reuses ALU and barrel shifter)
-    wire [15:0] mul_alu_a, mul_alu_b, mul_alu_result;
-    wire mul_alu_add;
-    wire [15:0] mul_shift_data, mul_shift_result;
-    wire [3:0] mul_shift_amount;
-    wire mul_shift_left;
+    // Multiplier removed for area optimization
 
-    shared_multiplier mult (
-        .clk(clk),
-        .rst_n(rst_n),
-        .start(mul_start),
-        .a(a),
-        .b(b),
-        .high_result(mul_high),
-        .result(mul_result),
-        .done(mul_done),
-        .alu_a(mul_alu_a),
-        .alu_b(mul_alu_b),
-        .alu_add(mul_alu_add),
-        .alu_result(mul_alu_result),
-        .shift_data(mul_shift_data),
-        .shift_amount(mul_shift_amount),
-        .shift_left(mul_shift_left),
-        .shift_result(mul_shift_result)
-    );
-
-    // Resource arbitration - multiplier vs normal ALU/shifter
-    wire using_multiplier = !mul_done && mul_start;
-
-    // ALU arbitration
-    wire [15:0] alu_a_input = using_multiplier ? mul_alu_a : a;
-    wire [15:0] alu_b_input = using_multiplier ? mul_alu_b : b;
-    assign mul_alu_result = alu_a_input + alu_b_input;  // Simple adder for multiplier
-
-    // Shifter arbitration
-    wire [15:0] shifter_data = using_multiplier ? mul_shift_data : a;
-    wire [3:0] shifter_amount = using_multiplier ? mul_shift_amount : shift_amount;
-    wire shifter_left = using_multiplier ? mul_shift_left : shift_left;
-    wire shifter_arith = using_multiplier ? 1'b0 : shift_arith;  // Multiplier uses logical shifts
-
-    // Single barrel shifter with arbitration
+    // Direct barrel shifter (no multiplier arbitration)
     wire [15:0] shift_result;
     barrel_shifter shared_shifter (
-        .data_in(shifter_data),
-        .shift_amount(shifter_amount),
-        .shift_left(shifter_left),
-        .shift_arith(shifter_arith),
+        .data_in(a),
+        .shift_amount(shift_amount),
+        .shift_left(shift_left),
+        .shift_arith(shift_arith),
         .data_out(shift_result)
     );
-
-    assign mul_shift_result = shift_result;
     // assign mul_busy = using_multiplier; // Removed for area optimization
 
     // ALU operation logic - full functionality with division
@@ -129,8 +89,7 @@ module alu (
             // Shift operations (barrel shifter)
             ALU_SLL, ALU_SRL, ALU_SRA: result = shift_result;
 
-            // Multiplication operations
-            ALU_MUL, ALU_MULH: result = mul_done ? mul_result : 16'h0000;
+            // Multiplication removed for area optimization
 
             // Branch operations (shared comparison logic)
             ALU_BEQ:  result = equal ? 16'h0001 : 16'h0000;
