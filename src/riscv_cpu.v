@@ -85,7 +85,7 @@ module riscv_cpu (
     // 0x0000-0x7FFF: Instruction memory (32KB)
     // 0x8000-0xFFFF: Data memory (32KB)
     wire [15:0] instruction_addr = (pc << 2) + {14'b0, fetch_counter};
-    wire [15:0] data_addr = 16'h8000 + alu_out; // Data in upper 32KB
+    wire [15:0] data_addr = 16'h8000 + {8'h00, alu_out}; // Data in upper 32KB
 
     // Memory data output from I2C
     reg [7:0] mem_data_out;
@@ -247,7 +247,7 @@ module riscv_cpu (
         .write_addr(rd[1:0]),  // Destination register (2-bit for 3 regs)
         .write_data(reg_data_sel == 2'b00 ? alu_out :
                    reg_data_sel == 2'b01 ? mem_data_out :
-                   reg_data_sel == 2'b10 ? (pc + 8'd1) :
+                   reg_data_sel == 2'b10 ? pc[7:0] + 8'd1 :
                    reg_data_sel == 2'b11 ? imm_i : alu_out),
         .write_enable(reg_write_en && (state == STATE_WRITEBACK)),
         .data_out1(reg_data1), // rs1 data for ALU

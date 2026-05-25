@@ -3,7 +3,7 @@ project:
   title:        "8-bit RISC-V Processor"      # Project title
   author:       "Finn Rades (zOnlyKroks)"     # Your name
   discord:      "zOnlyKroks"      # Your discord username, for communication and automatically assigning you a Tapeout role (optional)
-  description:  "A complete 8-bit RISC-V processor with internal ROM, implementing RV32I base instruction set"      # One line description of what your project does
+  description:  "A complete 8-bit RISC-V processor with external I2C EEPROM, implementing RV32I base instruction set"      # One line description of what your project does
   language:     "Verilog" # other examples include SystemVerilog, Amaranth, VHDL, etc
   clock_hz:     10000000       # Clock frequency in Hz (10 MHz target)
 
@@ -19,6 +19,7 @@ project:
   source_files:
     - "project.v"
     - "riscv_cpu.v"
+    - "i2c_controller.v"
     - "alu.v"
     - "register_file.v"
     - "control_unit.v"
@@ -27,32 +28,32 @@ project:
 # This section is for the datasheet/website. Use descriptive names (e.g., RX, TX, MOSI, SCL, SEG_A, etc.).
 pinout:
   # Inputs
-  ui[0]: "PROG_MODE"     # Program loading mode enable
-  ui[1]: "DEBUG_EN"      # Debug mode enable
-  ui[2]: "STEP_MODE"     # Single step execution mode
-  ui[3]: "PROG_DATA[0]"  # Program data bit 0
-  ui[4]: "PROG_DATA[1]"  # Program data bit 1
-  ui[5]: "PROG_DATA[2]"  # Program data bit 2
-  ui[6]: "PROG_DATA[3]"  # Program data bit 3
-  ui[7]: "PROG_CLK"      # Program loading clock
+  ui[0]: "DEBUG_EN"      # Debug mode enable
+  ui[1]: ""              # Unused
+  ui[2]: ""              # Unused
+  ui[3]: ""              # Unused
+  ui[4]: ""              # Unused
+  ui[5]: ""              # Unused
+  ui[6]: ""              # Unused
+  ui[7]: ""              # Unused
 
   # Outputs
   uo[0]: "PC[0]"         # Program Counter bit 0
   uo[1]: "PC[1]"         # Program Counter bit 1
   uo[2]: "PC[2]"         # Program Counter bit 2
   uo[3]: "PC[3]"         # Program Counter bit 3
-  uo[4]: "REG_OUT[0]"    # Register output bit 0
-  uo[5]: "REG_OUT[1]"    # Register output bit 1
-  uo[6]: "REG_OUT[2]"    # Register output bit 2
-  uo[7]: "REG_OUT[3]"    # Register output bit 3
+  uo[4]: "ADDR[0]"       # EEPROM Address bit 0
+  uo[5]: "ADDR[1]"       # EEPROM Address bit 1
+  uo[6]: "ADDR[2]"       # EEPROM Address bit 2
+  uo[7]: "ADDR[3]"       # EEPROM Address bit 3
 
   # Bidirectional pins
-  uio[0]: "DATA_BUS[0]"  # Data bus bit 0
-  uio[1]: "DATA_BUS[1]"  # Data bus bit 1
-  uio[2]: "DATA_BUS[2]"  # Data bus bit 2
-  uio[3]: "DATA_BUS[3]"  # Data bus bit 3
-  uio[4]: "ADDR_OUT[0]"  # Address output bit 0
-  uio[5]: "ADDR_OUT[1]"  # Address output bit 1
+  uio[0]: "SCL"          # I2C Clock output
+  uio[1]: "SDA"          # I2C Data (bidirectional)
+  uio[2]: "ADDR[14]"     # EEPROM Address bit 14
+  uio[3]: "ADDR[15]"     # EEPROM Address bit 15
+  uio[4]: "PC[6]"        # Program Counter bit 6
+  uio[5]: "PC[7]"        # Program Counter bit 7
   uio[6]: "HALT"         # CPU halt signal
   uio[7]: "VALID"        # Output valid signal
 
