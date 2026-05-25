@@ -28,8 +28,8 @@ module alu (
     localparam ALU_SLL  = 5'b00111;  // Shift left logical
     localparam ALU_SRL  = 5'b01000;  // Shift right logical
     localparam ALU_SRA  = 5'b01001;  // Shift right arithmetic
-    localparam ALU_MUL  = 5'b01010;  // Multiplication (simplified)
-    // localparam ALU_MULH = 5'b01011;  // Removed for area optimization
+    localparam ALU_MUL  = 5'b01010;  // Multiplication
+    localparam ALU_MULH = 5'b01011;  // Multiplication high result
     localparam ALU_BEQ  = 5'b10000;  // Branch equal
     localparam ALU_BNE  = 5'b10001;  // Branch not equal
     localparam ALU_BLT  = 5'b10010;  // Branch less than
@@ -52,9 +52,9 @@ module alu (
     wire shift_left = (alu_op == ALU_SLL);
     wire shift_arith = (alu_op == ALU_SRA);
 
-    // Multiplication control (simplified)
-    wire mul_start = (alu_op == ALU_MUL);
-    wire mul_high = 1'b0;  // Always use low result
+    // Multiplication control
+    wire mul_start = (alu_op == ALU_MUL || alu_op == ALU_MULH);
+    wire mul_high = (alu_op == ALU_MULH);
     wire [15:0] mul_result;
     wire mul_done;
 
@@ -129,8 +129,8 @@ module alu (
             // Shift operations (barrel shifter)
             ALU_SLL, ALU_SRL, ALU_SRA: result = shift_result;
 
-            // Multiplication operations (simplified)
-            ALU_MUL: result = mul_done ? mul_result : 16'h0000;
+            // Multiplication operations
+            ALU_MUL, ALU_MULH: result = mul_done ? mul_result : 16'h0000;
 
             // Branch operations (shared comparison logic)
             ALU_BEQ:  result = equal ? 16'h0001 : 16'h0000;

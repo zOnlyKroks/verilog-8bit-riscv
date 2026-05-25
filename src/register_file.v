@@ -1,6 +1,6 @@
 /*
  * 16-bit Register File for RISC-V CPU
- * 6 registers (x0-x5) - optimized balance of functionality and area
+ * 8 registers (x0-x7) - full 3-bit address space utilization
  * Copyright (c) 2024 Finn Rades (zOnlyKroks)
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -19,24 +19,24 @@ module register_file (
     output wire [15:0] data_out2     // Read port 2 data
 );
 
-    // Register array: 6 x 16-bit registers (x0-x5)
-    reg [15:0] registers [5:0];
+    // Register array: 8 x 16-bit registers (x0-x7)
+    reg [15:0] registers [7:0];
 
     // Initialize registers
     integer i;
     always_ff @(posedge clk or negedge rst_n) begin
         if (!rst_n) begin
-            for (i = 0; i < 6; i = i + 1) begin
+            for (i = 0; i < 8; i = i + 1) begin
                 registers[i] <= 16'h0000;
             end
-        end else if (write_enable && write_addr != 3'h0 && write_addr < 3'd6) begin
-            // Don't write to register x0 (always zero in RISC-V) and only write to valid registers (x0-x5)
+        end else if (write_enable && write_addr != 3'h0) begin
+            // Don't write to register x0 (always zero in RISC-V) and only write to valid registers (x0-x7)
             registers[write_addr] <= write_data;
         end
     end
 
-    // Read ports (combinatorial) - x0 always reads as zero, invalid addresses read as zero
-    assign data_out1 = (read_addr1 == 3'h0 || read_addr1 >= 3'd6) ? 16'h0000 : registers[read_addr1];
-    assign data_out2 = (read_addr2 == 3'h0 || read_addr2 >= 3'd6) ? 16'h0000 : registers[read_addr2];
+    // Read ports (combinatorial) - x0 always reads as zero
+    assign data_out1 = (read_addr1 == 3'h0) ? 16'h0000 : registers[read_addr1];
+    assign data_out2 = (read_addr2 == 3'h0) ? 16'h0000 : registers[read_addr2];
 
 endmodule
