@@ -89,9 +89,9 @@ module alu (
             // Shift operations (barrel shifter)
             ALU_SLL, ALU_SRL, ALU_SRA: result = shift_result;
 
-            // Simple multiplication
+            // Simplified multiplication (reduce timing pressure)
             ALU_MUL: begin
-                result = a * b;  // Direct 16x16→16 multiplication (truncated)
+                result = a[7:0] * b[7:0];  // 8x8→16 multiplication for better timing
             end
 
             // Branch operations (shared comparison logic)
