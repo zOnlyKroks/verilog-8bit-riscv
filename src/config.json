@@ -15,10 +15,10 @@
   "//": "Users have reported that values up to 80 worked well for them.",
   "PL_TARGET_DENSITY_PCT": 81,
 
-  "//": "Additional placement and routing optimization settings",
-  "PL_MAX_DISPLACEMENT_X": 1000,
-  "PL_MAX_DISPLACEMENT_Y": 1000,
-  "DPL_MAX_DISPLACEMENT": 1000,
+  "//": "Additional placement and routing optimization settings - reduced for more compact layout",
+  "PL_MAX_DISPLACEMENT_X": 300,
+  "PL_MAX_DISPLACEMENT_Y": 300,
+  "DPL_MAX_DISPLACEMENT": 400,
   "GRT_OVERFLOW_ITER": 150,
 
   "//": "CLOCK_PERIOD - Increase this in case you are getting setup time violations.",
@@ -61,9 +61,14 @@
 
   "GRT_ALLOW_CONGESTION": 1,
   "GRT_ADJUSTMENT": 0.3,
-  "DPL_CELL_PADDING": 3,
-  "GPL_CELL_PADDING": 2,
+  "DPL_CELL_PADDING": 1,
+  "GPL_CELL_PADDING": 1,
   "DPL_DISALLOW_ONE_SITE_GAPS": 0,
+
+  "//": "Keep related logic together - reduce macro halo for tighter packing",
+  "PL_MACRO_HALO": "10 10",
+  "PL_TIMING_DRIVEN": 1,
+  "PL_ROUTABILITY_DRIVEN": 1,
   "PL_TARGET_DENSITY_PCT": 95,
 
   "FP_IO_HLENGTH": 2,
