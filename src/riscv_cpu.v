@@ -242,9 +242,9 @@ module riscv_cpu (
     register_file regfile (
         .clk(clk),
         .rst_n(rst_n),
-        .read_addr1(rs1[2:0]), // Source register 1 for ALU (3-bit for 8 regs)
-        .read_addr2(rs2[2:0]), // Source register 2 for ALU (3-bit for 8 regs)
-        .write_addr(rd[2:0]),  // Destination register (3-bit for 8 regs)
+        .read_addr1(rs1[2:0]), // Source register 1 for ALU (3-bit for 6 regs)
+        .read_addr2(rs2[2:0]), // Source register 2 for ALU (3-bit for 6 regs)
+        .write_addr(rd[2:0]),  // Destination register (3-bit for 6 regs)
         .write_data(reg_data_sel == 2'b00 ? alu_out :
                    reg_data_sel == 2'b01 ? mem_data_out :
                    reg_data_sel == 2'b10 ? pc + 16'd1 :

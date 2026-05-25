@@ -10,7 +10,7 @@ Full-featured RISC-V processor implementation with external EEPROM memory optimi
 
 ### Architecture
 - **Datapath**: 16-bit Harvard architecture with external memory
-- **Registers**: 8 general-purpose (x0-x7), x0 hardwired to zero
+- **Registers**: 6 general-purpose (x0-x5), x0 hardwired to zero
 - **External Memory**: 64KB EEPROM via I2C (instruction + data)
 - **Memory Interface**: I2C master controller (100kHz)
 - **Execution**: Multi-cycle (10 states including I2C memory access)
@@ -262,7 +262,7 @@ Instructions referencing x4-x31 will use x0 (reads) or be ignored (writes).
 
 ## Limitations
 
-- **Reduced register set**: Only 8 of 32 RISC-V registers (x0-x7)
+- **Reduced register set**: Only 6 of 32 RISC-V registers (x0-x5)
 - **External memory dependency**: Requires I2C EEPROM for operation
 - **Slower execution**: ~200μs per instruction due to I2C overhead
 - **No interrupts**: Polling-based I/O only  
@@ -275,7 +275,7 @@ Instructions referencing x4-x31 will use x0 (reads) or be ignored (writes).
 ✅ **Complete RV32I base instruction set**  
 ✅ **M Extension**: Full multiplication, division, and remainder operations  
 ✅ **16-bit datapath**: Doubled processing width from 8-bit  
-✅ **8 registers**: Expanded from 4 to 8 general-purpose registers (x0-x7)  
+✅ **6 registers**: 6 general-purpose registers (x0-x5) for good functionality  
 ✅ **All shift operations**: Logical and arithmetic shifts  
 ✅ **All comparison operations**: Signed and unsigned variants  
 ✅ **All branch operations**: Including unsigned comparisons  
