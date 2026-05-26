@@ -1,204 +1,180 @@
-# 8-bit RISC-V Processor Technical Documentation
+# 16-bit RISC-V Processor Technical Documentation
 
 ## Architecture
 
 ### Core Specifications
-- **Datapath Width**: 8-bit
-- **Architecture**: Harvard (separate instruction/data memory)
-- **Execution Model**: Multi-cycle (7-state FSM)
-- **Register File**: 4 registers (x0-x3)
-- **Instruction Memory**: 24 bytes (6 instructions maximum)
-- **Data Memory**: 12 bytes RAM
-- **Address Space**: 8-bit (256 byte maximum)
+- **Datapath Width**: 16-bit
+- **Architecture**: Harvard (separate instruction/data spaces in external EEPROM)
+- **Execution Model**: 3-state FSM (FETCH/EXECUTE/WRITEBACK)
+- **Register File**: 12 registers (x0-x11), x0 hardwired to zero
+- **External Memory**: 64KB I2C EEPROM (32KB instruction + 32KB data)
+- **Instruction Format**: 16-bit custom encoding with 4-bit opcodes
+- **I2C Interface**: 100kHz master controller for EEPROM access
 
 ### State Machine
-Processor executes through 7 distinct states:
-1. **FETCH_0**: Fetch instruction byte 0
-2. **FETCH_1**: Fetch instruction byte 1  
-3. **FETCH_2**: Fetch instruction byte 2
-4. **FETCH_3**: Fetch instruction byte 3
-5. **DECODE**: Decode instruction and generate control signals
-6. **EXECUTE**: Perform ALU operation/memory access
-7. **WRITEBACK**: Update register file and PC
+Processor executes through 3 states:
+1. **FETCH**: Read 16-bit instruction from EEPROM (2 I2C byte reads)
+2. **EXECUTE**: Decode and perform ALU/memory operations
+3. **WRITEBACK**: Update register file and increment PC
 
-### ALU Operations
-- Addition/Subtraction with carry detection
-- Bitwise AND, OR, XOR operations
-- Shift left logical (variable shift amount)
-- Set-less-than comparison (signed)
-- Branch comparison operations (EQ, NE, LT, GE)
+### Register File
+- **Size**: 12 x 16-bit registers
+- **Addressing**: 4-bit register addresses (supports x0-x11)
+- **x0 Behavior**: Hardwired to zero (reads return 0, writes ignored)
+- **x1-x11**: General purpose registers
+- **Access**: Dual read ports, single write port
 
-### Memory Architecture
-**Instruction ROM (24 bytes)**:
-- Addressable as bytes 0x00-0x17
-- Pre-programmed via nibble interface
-- Contains 32-bit RISC-V instructions
-- Non-volatile storage
-
-**Data RAM (12 bytes)**:
-- Addressable as bytes 0x00-0x0B
-- Read/write during execution
-- Initialized to zero on reset
-- Volatile storage
+### ALU Capabilities
+- **16-bit arithmetic**: ADD, SUB, MUL (8x8→16-bit)
+- **Logic operations**: AND, OR, XOR, NOT (bitwise)
+- **Shift operations**: SLL, SRL, SRA (barrel shifter)
+- **Comparisons**: SLT (signed), SLTU (unsigned)
+- **Zero flag**: Generated for branch decisions
 
 ## Instruction Set Architecture
 
-### Supported Instructions
-
-**R-Type (Register-Register)**:
+### 16-bit Instruction Format
 ```
-ADD  rd, rs1, rs2    # rd = rs1 + rs2
-SUB  rd, rs1, rs2    # rd = rs1 - rs2  
-AND  rd, rs1, rs2    # rd = rs1 & rs2
-OR   rd, rs1, rs2    # rd = rs1 | rs2
-XOR  rd, rs1, rs2    # rd = rs1 ^ rs2
-SLT  rd, rs1, rs2    # rd = (rs1 < rs2) ? 1 : 0
-SLL  rd, rs1, rs2    # rd = rs1 << (rs2 & 0x7)
+[15:12] - Opcode (4 bits)
+[11:8]  - rd (destination register, 4 bits)
+[7:4]   - rs1 (source register 1, 4 bits)
+[3:0]   - rs2 (source register 2, 4 bits)
 ```
 
-**I-Type (Immediate)**:
-```
-ADDI rd, rs1, imm    # rd = rs1 + sign_extend(imm)
-ANDI rd, rs1, imm    # rd = rs1 & zero_extend(imm)  
-ORI  rd, rs1, imm    # rd = rs1 | zero_extend(imm)
-XORI rd, rs1, imm    # rd = rs1 ^ zero_extend(imm)
-SLTI rd, rs1, imm    # rd = (rs1 < sign_extend(imm)) ? 1 : 0
-SLLI rd, rs1, shamt  # rd = rs1 << (shamt & 0x7)
-```
+### Opcode Assignments (4-bit)
+- **0x0**: ADD rd, rs1, rs2
+- **0x1**: SUB rd, rs1, rs2  
+- **0x2**: MUL rd, rs1, rs2
+- **0x3**: AND rd, rs1, rs2
+- **0x4**: OR rd, rs1, rs2
+- **0x5**: XOR rd, rs1, rs2
+- **0x6**: NOT rd, rs1
+- **0x7**: SLL rd, rs1, rs2
+- **0x8**: SRL rd, rs1, rs2
+- **0x9**: SRA rd, rs1, rs2
+- **0xA**: SLT rd, rs1, rs2
+- **0xB**: SLTU rd, rs1, rs2
+- **0xC**: LOAD rd, rs1
+- **0xD**: STORE rs2, rs1
+- **0xE**: BRANCH rs1, rs2 (branch if equal)
+- **0xF**: JAL rd (jump and link)
 
-**S-Type (Store)**:
-```
-SB   rs2, offset(rs1) # mem[rs1+offset] = rs2[7:0]
-```
-
-**B-Type (Branch)**:
-```
-BEQ  rs1, rs2, offset # if (rs1 == rs2) pc += offset
-BNE  rs1, rs2, offset # if (rs1 != rs2) pc += offset  
-BLT  rs1, rs2, offset # if (rs1 < rs2) pc += offset
-BGE  rs1, rs2, offset # if (rs1 >= rs2) pc += offset
-```
-
-**U-Type (Upper Immediate)**:
-```
-LUI  rd, imm         # rd = imm << 12 (8-bit: rd = imm)
-```
-
-**J-Type (Jump)**:
-```
-JAL  rd, offset      # rd = pc+4, pc += offset
-JALR rd, rs1, offset # rd = pc+4, pc = (rs1+offset) & ~1
+### Instruction Examples
+```assembly
+ADD x1, x2, x3     # x1 = x2 + x3
+SUB x4, x1, x2     # x4 = x1 - x2
+MUL x5, x3, x4     # x5 = x3 * x4 (8x8→16-bit)
+AND x6, x1, x2     # x6 = x1 & x2
+NOT x7, x1         # x7 = ~x1
+SLL x8, x1, x2     # x8 = x1 << (x2 & 0xF)
+LOAD x9, x1        # x9 = memory[0x8000 + x1]
+STORE x2, x1       # memory[0x8000 + x1] = x2
+BRANCH x1, x2      # if (x1 == x2) pc = pc + 1 + offset
 ```
 
-### Register Constraints
-- **x0**: Hardwired to zero (reads return 0, writes ignored)
-- **x1-x3**: General purpose 8-bit registers
-- **x4-x31**: Aliased to x0 (instruction compatibility)
+## External Memory Interface
 
-### Immediate Encoding
-- **12-bit immediates** truncated to 8-bit values
-- **Sign extension** applied for arithmetic operations
-- **Zero extension** applied for logical operations
-- **Branch/Jump offsets** word-aligned for 8-bit addressing
+### I2C EEPROM Requirements
+- **Device Address**: 0x50 (24LC512 compatible)
+- **Capacity**: 64KB (512 Kbit)
+- **Address Width**: 16-bit
+- **Clock Speed**: 100kHz
+- **Connections**: SCL (uio_out[0]), SDA (uio_in[1] bidirectional)
 
-## Programming Interface
+### Memory Organization
+**Address Map**:
+- **0x0000-0x7FFF**: Instruction memory (32KB)
+- **0x8000-0xFFFF**: Data memory (32KB)
 
-### Pin Mapping
+**Instruction Layout**:
+- Each instruction: 2 bytes (16-bit)
+- Little-endian byte order
+- PC increments by 1 per instruction
 
-**Input Pins (`ui_in[7:0]`)**:
-- `ui_in[0]`: Reset (active low)
-- `ui_in[1]`: Programming mode enable
-- `ui_in[2]`: Unused (formerly step mode)
-- `ui_in[3]`: Unused  
-- `ui_in[7:4]`: Programming data nibbles
+### I2C Protocol Implementation
+- **Start/Stop Conditions**: Hardware generated
+- **Bidirectional SDA**: Controlled via output enable
+- **Clock Generation**: Divided from system clock
+- **Error Handling**: Timeout and NACK detection
 
-**Bidirectional Pins (`uio_*[7:0]`)**:
-- `uio_in[0]`: Programming clock
-- `uio_out[3:0]`: Debug instruction data
-- `uio_out[6]`: Halt flag
-- `uio_out[7]`: Valid execution flag
+## Pin Configuration
 
-**Output Pins (`uo_out[7:0]`)**:
-- `uo_out[3:0]`: Program counter [3:0]
-- `uo_out[7:4]`: Current opcode [6:0] lower 4 bits
+### TinyTapeout Interface
 
-### Programming Sequence
+**Inputs** (`ui_in[7:0]`):
+- All unused (debug interface removed for area optimization)
 
-1. **Enter Programming Mode**:
-   ```
-   ui_in[1] = 1     // Enable programming
-   ui_in[0] = 0     // Assert reset
-   ui_in[0] = 1     // Release reset
-   ```
+**Bidirectional** (`uio_in[7:0]`, `uio_out[7:0]`, `uio_oe[7:0]`):
+- **uio_out[0]**: I2C Clock (SCL)
+- **uio_in[1]/uio_out[1]**: I2C Data (SDA), controlled by uio_oe[1]
+- **uio_out[3:2]**: EEPROM address bits [15:14] (debug)
+- **uio_out[5:4]**: Program counter bits [7:6] (debug)
+- **uio_out[6]**: Halt flag (processor stopped)
+- **uio_out[7]**: Valid flag (instruction executed)
 
-2. **Load Instructions** (LSB first):
-   ```
-   for instruction in program:
-     for nibble in range(8):  // 8 nibbles per 32-bit instruction
-       ui_in[7:4] = (instruction >> (nibble * 4)) & 0xF
-       uio_in[0] = 1  // Programming clock high
-       uio_in[0] = 0  // Programming clock low
-   ```
+**Outputs** (`uo_out[7:0]`):
+- **uo_out[3:0]**: Program counter [3:0]
+- **uo_out[7:4]**: EEPROM address [3:0]
 
-3. **Start Execution**:
-   ```
-   ui_in[1] = 0     // Disable programming mode
-   ```
+## Performance Characteristics
 
-### Instruction Encoding Examples
+### Execution Timing
+- **Instruction Fetch**: ~80μs (2 I2C byte reads)
+- **Memory Operation**: ~40μs (1 I2C byte read/write)
+- **ALU Operation**: 1 clock cycle
+- **Total Instruction Time**: ~100μs average
+- **Performance**: ~10,000 instructions/second
 
-**ADDI x1, x0, 5** (0x00500093):
+### Clock Domains
+- **System Clock**: 10MHz target
+- **I2C Clock**: 100kHz (divided from system)
+- **Single Clock Domain**: No clock domain crossing
+
+## Programming and Debug
+
+### EEPROM Programming
+Programs must be loaded into external EEPROM before execution:
+1. Use Arduino or I2C programmer to write instructions
+2. Connect programmed EEPROM to processor I2C pins
+3. Apply power and release reset
+4. Monitor execution via debug pins
+
+### Debug Interface
+- **PC Monitoring**: Current instruction address via uo_out[3:0] + uio_out[5:4]
+- **Memory Address**: Current EEPROM access via uo_out[7:4] + uio_out[3:2]
+- **Execution Status**: Valid instruction flag via uio_out[7]
+- **Halt Detection**: Processor halt via uio_out[6]
+- **I2C Activity**: SCL signal via uio_out[0]
+
+### Example Program Structure
+```assembly
+# Initialize registers
+ADD x1, x0, x0     # x1 = 0
+ADD x2, x0, x0     # x2 = 0
+
+# Main loop
+ADD x1, x1, x2     # x1 = x1 + x2  
+ADD x2, x2, x1     # x2 = x2 + x1
+BRANCH x0, x0      # Infinite loop (always branch)
 ```
-Nibble 0: 0x3   Nibble 1: 0x0   Nibble 2: 0x0   Nibble 3: 0x9
-Nibble 4: 0x0   Nibble 5: 0x5   Nibble 6: 0x0   Nibble 7: 0x0
-```
-
-**ADD x2, x1, x1** (0x001081B3):
-```  
-Nibble 0: 0x3   Nibble 1: 0x1   Nibble 2: 0x8   Nibble 3: 0xB
-Nibble 4: 0x0   Nibble 5: 0x1   Nibble 6: 0x0   Nibble 7: 0x0
-```
-
-## Testing and Verification
-
-### Built-in Test Program
-Default ROM contains demonstration program:
-1. Initialize x1 = 1
-2. Increment x1 (x1 = 2)
-3. Copy to x2 (x2 = 2)  
-4. Copy to x3 (x3 = 2)
-5. Add x1 + x2 → x1 (x1 = 4)
-6. AND x1 & x3 → x2 (x2 = 0)
-
-### Debug Monitoring
-- **Program Counter**: Monitor via `uo_out[3:0]`
-- **Opcode**: Current instruction via `uo_out[7:4]`
-- **Halt Detection**: `uio_out[6]` asserted on invalid instruction
-- **Execution Valid**: `uio_out[7]` during WRITEBACK state
-
-### Performance Characteristics
-- **Instruction Throughput**: 1 instruction per 7 clock cycles
-- **Maximum Frequency**: 10 MHz (100ns period)
-- **Program Execution Rate**: ~1.43 MHz instruction rate
-- **Memory Access Time**: Single cycle (no wait states)
 
 ## Silicon Implementation
 
 ### Physical Specifications
-- **Process Technology**: IHP 130nm
-- **Die Area**: 1x2 TinyTapeout tile (334×108 μm)
-- **Gate Count**: ~2500 equivalent gates
-- **Utilization**: 80% at current configuration
+- **Process**: IHP 130nm
+- **Die Area**: 1x2 TinyTapeout tile (334×108 μm)  
+- **Utilization**: ~54% area utilization
 - **Power**: <1mW estimated @ 3.3V, 10MHz
+- **I/O Count**: 8 inputs, 8 outputs, 8 bidirectional
 
-### Design Constraints
-- **Timing**: 10MHz maximum frequency
-- **Power**: Low power design, no dynamic voltage scaling
-- **Area**: Optimized for 80% utilization within tile
-- **Temperature**: Commercial grade (0°C to 85°C)
+### Design Features
+- **Single Clock Domain**: Simplified timing analysis
+- **Asynchronous Reset**: Standard practice for reliability
+- **Static Logic**: No dynamic or domino logic
+- **Standard Cells**: Compatible with OpenROAD flow
 
-### Fabrication Details
-- **Metal Layers**: Standard cell placement
-- **I/O**: TinyTapeout standardized interface  
-- **Clock**: Single clock domain, no clock gating
-- **Reset**: Asynchronous assert, synchronous de-assert
+### Synthesis Configuration
+- **Target Frequency**: 10MHz
+- **Timing Constraints**: Single cycle paths
+- **Area Optimization**: Balanced with timing requirements
+- **Power Optimization**: Clock gating not used for simplicity
