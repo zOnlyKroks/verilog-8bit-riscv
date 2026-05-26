@@ -236,7 +236,6 @@ module riscv_cpu (
 
     control_unit ctrl (
         .opcode(opcode),
-        .funct2(funct2),
         .alu_op(alu_op),
         .reg_write_en(reg_write_en),
         .mem_read_en(mem_read_en),

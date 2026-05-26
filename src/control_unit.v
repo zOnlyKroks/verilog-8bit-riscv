@@ -9,7 +9,6 @@
 
 module control_unit (
     input  wire [3:0] opcode,      // 4-bit opcode for 16-bit instructions
-    input  wire [1:0] funct2,      // 2-bit function field for operation variants
     output reg  [4:0] alu_op,      // ALU operation code (expanded to 5 bits)
     output reg        reg_write_en, // Register write enable
     output reg        mem_read_en,  // Memory read enable
@@ -22,19 +21,20 @@ module control_unit (
     localparam OP_ADD     = 4'b0000;  // ADD operation
     localparam OP_SUB     = 4'b0001;  // SUB operation
     localparam OP_MUL     = 4'b0010;  // MUL operation
-    localparam OP_LOGIC   = 4'b0011;  // LOGIC operations: AND, OR, XOR, NOT (uses immediate field)
-    localparam OP_RESERVED2 = 4'b0100; // Reserved (removed division for area)
-    localparam OP_RESERVED = 4'b0101; // Reserved for future use
-    localparam OP_SLL     = 4'b0110;  // Shift left logical
-    localparam OP_SRL     = 4'b0111;  // Shift right logical
-    localparam OP_SRA     = 4'b1000;  // Shift right arithmetic
-    localparam OP_SLT     = 4'b1001;  // Set less than
-    localparam OP_SLTU    = 4'b1010;  // Set less than unsigned
-    localparam OP_LOAD    = 4'b1011;  // Load from memory
-    localparam OP_STORE   = 4'b1100;  // Store to memory
-    localparam OP_BRANCH  = 4'b1101;  // Branch (simplified)
-    localparam OP_JAL     = 4'b1110;  // Jump and Link
-    localparam OP_LUI     = 4'b1111;  // Load Upper Immediate
+    localparam OP_AND     = 4'b0011;  // AND operation
+    localparam OP_OR      = 4'b0100;  // OR operation
+    localparam OP_XOR     = 4'b0101;  // XOR operation
+    localparam OP_NOT     = 4'b0110;  // NOT operation
+    localparam OP_SLL     = 4'b0111;  // Shift left logical (moved)
+    localparam OP_SRL     = 4'b1000;  // Shift right logical (moved)
+    localparam OP_SRA     = 4'b1001;  // Shift right arithmetic (moved)
+    localparam OP_SLT     = 4'b1010;  // Set less than (moved)
+    localparam OP_SLTU    = 4'b1011;  // Set less than unsigned (moved)
+    localparam OP_LOAD    = 4'b1100;  // Load from memory (moved)
+    localparam OP_STORE   = 4'b1101;  // Store to memory (moved)
+    localparam OP_BRANCH  = 4'b1110;  // Branch (simplified) (moved)
+    localparam OP_JAL     = 4'b1111;  // Jump and Link (moved)
+    // OP_LUI removed to fit NOT operation
 
     // ALU operation mapping
     always @(*) begin
@@ -65,23 +65,28 @@ module control_unit (
                 alu_op = 5'b01010;    // MUL
             end
 
-            OP_LOGIC: begin
+            OP_AND: begin
                 reg_write_en = 1'b1;
                 reg_data_sel = 2'b00; // ALU result
-                case (funct2)
-                    2'b00: alu_op = 5'b00010;    // AND
-                    2'b01: alu_op = 5'b00011;    // OR
-                    2'b10: alu_op = 5'b00100;    // XOR
-                    2'b11: alu_op = 5'b01111;    // NOT (new ALU operation)
-                endcase
+                alu_op = 5'b00010;    // AND
             end
 
-            OP_RESERVED2: begin
-                // Reserved - removed division for area savings
+            OP_OR: begin
+                reg_write_en = 1'b1;
+                reg_data_sel = 2'b00; // ALU result
+                alu_op = 5'b00011;    // OR
             end
 
-            OP_RESERVED: begin
-                // Reserved - no operation
+            OP_XOR: begin
+                reg_write_en = 1'b1;
+                reg_data_sel = 2'b00; // ALU result
+                alu_op = 5'b00100;    // XOR
+            end
+
+            OP_NOT: begin
+                reg_write_en = 1'b1;
+                reg_data_sel = 2'b00; // ALU result
+                alu_op = 5'b01111;    // NOT
             end
 
             OP_SLL: begin
