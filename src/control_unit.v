@@ -142,10 +142,7 @@ module control_unit (
                 pc_sel = 2'b10;       // Jump
             end
 
-            OP_LUI: begin
-                reg_write_en = 1'b1;
-                reg_data_sel = 2'b11; // Immediate value
-            end
+            // OP_LUI removed to make room for NOT operation
 
             default: begin
                 // NOP or invalid instruction
