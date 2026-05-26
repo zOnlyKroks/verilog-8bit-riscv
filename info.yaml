@@ -1,9 +1,9 @@
 # Tiny Tapeout project information
 project:
-  title:        "8-bit RISC-V Processor"      # Project title
+  title:        "16-bit RISC-V Processor"      # Project title
   author:       "Finn Rades (zOnlyKroks)"     # Your name
   discord:      "zOnlyKroks"      # Your discord username, for communication and automatically assigning you a Tapeout role (optional)
-  description:  "A complete 8-bit RISC-V processor with external I2C EEPROM, implementing RV32I base instruction set"      # One line description of what your project does
+  description:  "16-bit RISC-V processor with external I2C EEPROM, implementing RV32 like instruction set"      # One line description of what your project does
   language:     "Verilog" # other examples include SystemVerilog, Amaranth, VHDL, etc
   clock_hz:     10000000       # Clock frequency in Hz (10 MHz target)
 
